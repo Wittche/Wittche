@@ -1,5 +1,8 @@
 // Main kernel code
 #include "../include/kernel.h"
+#include "../include/idt.h"
+#include "../include/keyboard.h"
+#include "../include/types.h"
 
 // VGA text mode buffer
 #define VIDEO_MEMORY 0xB8000
@@ -39,6 +42,21 @@ void print_string(const char *str) {
         if (str[i] == '\n') {
             cursor_col = 0;
             cursor_row++;
+        } else if (str[i] == '\b') {
+            // Handle backspace
+            if (cursor_col > 0) {
+                cursor_col--;
+            } else if (cursor_row > 0) {
+                cursor_row--;
+                cursor_col = MAX_COLS - 1;
+            }
+        } else if (str[i] == '\t') {
+            // Handle tab (align to 4 spaces)
+            cursor_col = (cursor_col + 4) & ~3;
+            if (cursor_col >= MAX_COLS) {
+                cursor_col = 0;
+                cursor_row++;
+            }
         } else {
             print_char(str[i], WHITE_ON_BLACK, cursor_row, cursor_col);
             cursor_col++;
@@ -101,37 +119,77 @@ void *memcpy(void *dest, const void *src, unsigned int num) {
     return dest;
 }
 
+// Simple string compare function
+int strcmp(const char *str1, const char *str2) {
+    while (*str1 && (*str1 == *str2)) {
+        str1++;
+        str2++;
+    }
+    return *(unsigned char *)str1 - *(unsigned char *)str2;
+}
+
+// Simple string copy function
+char *strcpy(char *dest, const char *src) {
+    char *ret = dest;
+    while ((*dest++ = *src++));
+    return ret;
+}
+
+// Process shell command
+void process_command(char *command) {
+    if (strcmp(command, "help") == 0) {
+        print_string("\nAvailable commands:\n");
+        print_string("  help    - Show this help message\n");
+        print_string("  clear   - Clear the screen\n");
+        print_string("  about   - Show system information\n");
+        print_string("  echo    - Echo a message\n");
+    } else if (strcmp(command, "clear") == 0) {
+        clear_screen();
+    } else if (strcmp(command, "about") == 0) {
+        print_string("\nWittche Operating System v0.2\n");
+        print_string("A simple x86 operating system\n");
+        print_string("Architecture: x86 (32-bit)\n");
+        print_string("Features: IDT, Interrupts, Keyboard Input\n");
+    } else if (command[0] == 'e' && command[1] == 'c' && command[2] == 'h' &&
+               command[3] == 'o' && command[4] == ' ') {
+        print_string("\n");
+        print_string(&command[5]);
+        print_string("\n");
+    } else if (command[0] == '\0') {
+        // Empty command, just print newline
+        print_string("\n");
+    } else {
+        print_string("\nUnknown command: ");
+        print_string(command);
+        print_string("\nType 'help' for available commands.\n");
+    }
+}
+
 // Main kernel function
 void kernel_main() {
     // Clear the screen
     clear_screen();
 
     // Print welcome message
-    print_string("Wittche Operating System v0.1\n");
+    print_string("Wittche Operating System v0.2\n");
     print_string("============================\n\n");
 
-    print_string("Welcome to Wittche OS!\n");
-    print_string("This is a simple x86 operating system kernel.\n\n");
+    // Initialize IDT and interrupts
+    idt_init();
 
-    print_string("System Information:\n");
-    print_string("- Architecture: x86 (32-bit)\n");
-    print_string("- Video Mode: VGA Text Mode (80x25)\n");
-    print_string("- Kernel loaded at: ");
-    print_hex(0x10000);
-    print_string("\n\n");
+    // Initialize keyboard driver
+    keyboard_init();
 
-    print_string("Features implemented:\n");
-    print_string("- Bootloader (Protected mode)\n");
-    print_string("- VGA text output\n");
-    print_string("- Basic string functions\n");
-    print_string("\n");
+    print_string("\nWelcome to Wittche OS!\n");
+    print_string("This is a simple x86 operating system kernel.\n");
+    print_string("Type 'help' for available commands.\n\n");
 
-    print_string("Kernel is now running...\n");
-    print_string("System halted. (No task scheduler yet)\n");
+    // Simple shell loop
+    char command_buffer[256];
 
-    // Infinite loop - kernel is running
     while (1) {
-        // In a real OS, we would have a scheduler here
-        __asm__ __volatile__("hlt");  // Halt CPU until next interrupt
+        print_string("> ");
+        keyboard_get_line(command_buffer, sizeof(command_buffer));
+        process_command(command_buffer);
     }
 }

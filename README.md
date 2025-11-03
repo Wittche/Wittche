@@ -7,6 +7,9 @@ Wittche, x86 mimarisi için geliştirilmiş basit bir işletim sistemidir. Eğit
 - ✅ **Bootloader**: BIOS tarafından yüklenen, protected mode'a geçiş yapan bootloader
 - ✅ **32-bit Kernel**: C ile yazılmış temel kernel
 - ✅ **VGA Text Mode**: Ekrana metin yazdırma desteği
+- ✅ **IDT (Interrupt Descriptor Table)**: Interrupt yönetimi
+- ✅ **Keyboard Driver**: PS/2 klavye desteği, scancode to ASCII dönüşümü
+- ✅ **Simple Shell**: Temel komut satırı arayüzü (help, clear, about, echo)
 - ✅ **Temel Fonksiyonlar**: String işlemleri, hafıza işlemleri
 
 ## Gereksinimler
@@ -83,9 +86,17 @@ Wittche/
 │   └── boot.asm         # Bootloader (16-bit -> 32-bit protected mode)
 ├── kernel/
 │   ├── kernel_entry.asm # Kernel giriş noktası
-│   └── kernel.c         # Ana kernel kodu
+│   ├── kernel.c         # Ana kernel kodu ve shell
+│   ├── idt.c            # Interrupt Descriptor Table
+│   ├── isr.c            # Interrupt Service Routines
+│   ├── interrupt.asm    # Interrupt handler stubs
+│   └── keyboard.c       # Klavye sürücüsü
 ├── include/
-│   └── kernel.h         # Kernel header dosyası
+│   ├── kernel.h         # Kernel header dosyası
+│   ├── idt.h            # IDT header
+│   ├── keyboard.h       # Klavye sürücüsü header
+│   ├── ports.h          # I/O port fonksiyonları
+│   └── types.h          # Tip tanımlamaları
 ├── build/               # Build çıktıları (git'e eklenmez)
 ├── linker.ld            # Linker script
 ├── Makefile             # Build sistemi
@@ -100,31 +111,46 @@ Wittche/
    - GDT (Global Descriptor Table) kurar
    - Protected mode'a geçer
    - Kernel'e (0x10000) atlar
-3. **Kernel**: `kernel/kernel_entry.asm` çalışır ve `kernel_main()` fonksiyonunu çağırır
+3. **Kernel Entry**: `kernel/kernel_entry.asm` çalışır ve `kernel_main()` fonksiyonunu çağırır
 4. **Kernel Main**: `kernel/kernel.c` içindeki `kernel_main()`:
    - Ekranı temizler
-   - Hoş geldin mesajı yazar
-   - Sistem bilgilerini gösterir
-   - Sonsuz döngüde bekler (HLT instruction ile)
+   - IDT (Interrupt Descriptor Table) kurar
+   - PIC (Programmable Interrupt Controller) yapılandırır
+   - Klavye sürücüsünü başlatır
+   - Interrupt'ları etkinleştirir (sti)
+   - Shell döngüsüne girer
+5. **Shell**: Kullanıcıdan komut alır ve işler:
+   - `help`: Kullanılabilir komutları gösterir
+   - `clear`: Ekranı temizler
+   - `about`: Sistem bilgilerini gösterir
+   - `echo <mesaj>`: Mesajı ekrana yazar
 
 ## Geliştirme Yol Haritası
 
+### Tamamlananlar:
+- [x] Klavye girişi (Interrupt handler)
+- [x] Interrupt Descriptor Table (IDT)
+- [x] Basit komut satırı (shell)
+- [x] PIC (Programmable Interrupt Controller) konfigürasyonu
+
 ### Kısa Vadeli:
-- [ ] Klavye girişi (Interrupt handler)
-- [ ] Daha gelişmiş ekran çıktısı (scroll, renkler)
-- [ ] Basit komut satırı (shell)
+- [ ] Daha gelişmiş ekran çıktısı (scroll, cursor, renkler)
+- [ ] Timer interrupt (PIT - Programmable Interval Timer)
+- [ ] Daha fazla shell komutu
+- [ ] String parsing ve tokenization
 
 ### Orta Vadeli:
-- [ ] Interrupt Descriptor Table (IDT)
-- [ ] Timer interrupt
 - [ ] Hafıza yönetimi (paging)
-- [ ] Basit dosya sistemi
+- [ ] Heap allocator (kmalloc/kfree)
+- [ ] VFS (Virtual File System) katmanı
+- [ ] Basit dosya sistemi (FAT12 veya custom)
 
 ### Uzun Vadeli:
 - [ ] Çoklu görev (multitasking)
+- [ ] Process/Thread yönetimi
 - [ ] Kullanıcı modu
 - [ ] Sistem çağrıları (syscalls)
-- [ ] Basit sürücüler (drivers)
+- [ ] Daha fazla sürücü (ATA disk, serial port, vb.)
 
 ## Kaynaklar
 
