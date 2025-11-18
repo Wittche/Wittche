@@ -253,7 +253,6 @@ void shell_process_command(char *command) {
     }
 
     char *cmd = tokens[0];
-    char *args = (token_count > 1) ? tokens[1] : NULL;
 
     // Find full args string (everything after first token)
     char *full_args = command;

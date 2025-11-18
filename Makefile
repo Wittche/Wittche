@@ -7,8 +7,8 @@ LD = ld
 
 # Flags
 ASM_FLAGS = -f elf32
-CC_FLAGS = -m32 -ffreestanding -nostdlib -nostdinc -fno-builtin -fno-stack-protector -nostartfiles -nodefaultlibs -Wall -Wextra -c
-LD_FLAGS = -m elf_i386 -T linker.ld
+CC_FLAGS = -m32 -ffreestanding -nostdlib -nostdinc -fno-builtin -fno-stack-protector -nostartfiles -nodefaultlibs -fno-pic -fno-pie -Wall -Wextra -c
+LD_FLAGS = -m elf_i386 -T linker.ld -no-pie
 
 # Directories
 BUILD_DIR = build
