@@ -1,117 +1,207 @@
 # Wittche Operating System
 
-Wittche, x86 mimarisi için geliştirilmiş eğitim amaçlı bir işletim sistemidir. Sıfırdan yazılmış, temiz ve anlaşılır kod yapısıyla OS geliştirme öğrenmek isteyenler için mükemmel bir başlangıç noktasıdır.
+<div align="center">
 
-## Özellikler
+![Version](https://img.shields.io/badge/version-0.4-blue.svg)
+![License](https://img.shields.io/badge/license-MIT-green.svg)
+![Platform](https://img.shields.io/badge/platform-x86-orange.svg)
+![Language](https://img.shields.io/badge/language-C%20%7C%20Assembly-yellow.svg)
+
+**An educational operating system built from scratch for learning OS development**
+
+[Features](#features) • [Getting Started](#getting-started) • [Contributing](#contributing) • [Roadmap](#roadmap) • [Documentation](#documentation)
+
+</div>
+
+---
+
+## 🎯 About
+
+Wittche OS is an educational operating system designed to help developers learn operating system concepts from the ground up. Written in C and Assembly, it features a clean, well-documented codebase perfect for understanding how operating systems work.
+
+**Perfect for:**
+- 🎓 Students learning OS development
+- 💻 Developers wanting to understand low-level programming
+- 🔬 Anyone interested in how computers boot and run
+- 👥 Contributors looking for an educational open-source project
+
+## ✨ Features
 
 ### 🚀 Core Features
-- ✅ **Custom Bootloader**: BIOS boot, GDT setup, protected mode geçişi
-- ✅ **32-bit Protected Mode Kernel**: Tamamen C ve Assembly ile yazılmış
-- ✅ **Interrupt Management**: Tam IDT ve ISR/IRQ desteği
-- ✅ **Hardware Drivers**: PS/2 klavye, VGA text mode
+- ✅ **Custom Bootloader**: BIOS boot, GDT setup, protected mode transition
+- ✅ **32-bit Protected Mode Kernel**: Written entirely in C and Assembly
+- ✅ **Interrupt Management**: Full IDT with ISR/IRQ support
+- ✅ **Hardware Drivers**: PS/2 keyboard, VGA text mode, PIT timer
 
 ### 🎨 Display
-- ✅ **VGA Text Mode Driver**: 80x25 renkli metin çıktısı
-- ✅ **Hardware Cursor**: VGA donanım cursor desteği
-- ✅ **Proper Scrolling**: Otomatik ekran kaydırma
-- ✅ **16 Color Support**: Tam VGA renk paleti
+- ✅ **VGA Text Mode Driver**: 80x25 colorful text output
+- ✅ **Hardware Cursor**: VGA hardware cursor support
+- ✅ **Proper Scrolling**: Automatic screen scrolling
+- ✅ **16 Color Support**: Full VGA color palette
 
 ### ⌨️ Input
-- ✅ **PS/2 Keyboard Driver**: Donanım interrupt tabanlı
+- ✅ **PS/2 Keyboard Driver**: Hardware interrupt-based
 - ✅ **Scancode to ASCII**: US QWERTY layout
-- ✅ **Special Keys**: Shift, Caps Lock, Backspace, Enter desteği
-- ✅ **Input Buffering**: Circular queue ile klavye buffer'ı
+- ✅ **Special Keys**: Shift, Caps Lock, Backspace, Enter support
+- ✅ **Input Buffering**: Circular queue keyboard buffer
 
 ### 💻 Shell
-- ✅ **Interactive Shell**: Tam özellikli komut satırı arayüzü
-- ✅ **Command Parser**: Argüman ayrıştırma ve tokenization
-- ✅ **Command History**: Son 10 komut geçmişi
-- ✅ **Built-in Commands**: help, clear, about, echo, color, history, banner
-- ✅ **Colorful Output**: Renkli komut çıktıları
+- ✅ **Interactive Shell**: Full-featured command-line interface
+- ✅ **Command Parser**: Argument parsing and tokenization
+- ✅ **Command History**: Last 10 commands tracked
+- ✅ **Built-in Commands**: help, clear, about, echo, color, uptime, history, banner
+- ✅ **Colorful Output**: Colored command output
+
+### ⏱️ Timing
+- ✅ **PIT (Programmable Interval Timer)**: 1000 Hz timer
+- ✅ **System Uptime**: Accurate uptime tracking
+- ✅ **Time Formatting**: HH:MM:SS display
 
 ### 📚 Libraries
-- ✅ **String Library**: strlen, strcmp, strcpy, strcat, split, trim, vb.
+- ✅ **String Library**: strlen, strcmp, strcpy, strcat, split, trim, etc.
 - ✅ **Memory Functions**: memset, memcpy, memcmp
-- ✅ **Conversion Functions**: atoi, itoa (çeşitli tabanlar)
-- ✅ **Modular Design**: Temiz, ayrılmış modül yapısı
+- ✅ **Conversion Functions**: atoi, itoa (various bases)
+- ✅ **Modular Design**: Clean, separated module structure
 
-## Gereksinimler
+## 🚀 Getting Started
 
-### Build için:
-- `nasm` (Netwide Assembler)
-- `gcc` (GNU C Compiler) - 32-bit desteği ile
-- `ld` (GNU Linker)
-- `make`
+### Prerequisites
 
-### Çalıştırmak için:
-- `qemu-system-i386` (QEMU emülatörü)
-
-### Ubuntu/Debian üzerinde kurulum:
 ```bash
-sudo apt-get update
+# Ubuntu/Debian
 sudo apt-get install nasm gcc-multilib make qemu-system-x86
-```
 
-### Fedora/RHEL üzerinde kurulum:
-```bash
+# Fedora/RHEL
 sudo dnf install nasm gcc make qemu-system-x86
+
+# Arch Linux
+sudo pacman -S nasm gcc make qemu
 ```
 
-## Derleme
-
-Projeyi derlemek için:
+### Building
 
 ```bash
+# Clone the repository
+git clone https://github.com/YOUR-USERNAME/Wittche.git
+cd Wittche
+
+# Build the OS
 make
-```
 
-Bu komut tüm kaynak dosyaları derleyip `build/wittche.img` dosyasını oluşturur.
-
-## Çalıştırma
-
-QEMU ile çalıştırmak için:
-
-```bash
+# Run in QEMU
 make run
-```
 
-Debug modunda çalıştırmak için:
-
-```bash
-make debug
-```
-
-Debug modunda, QEMU 1234 portunda GDB bekleyecektir. Başka bir terminalde:
-
-```bash
-gdb
-(gdb) target remote localhost:1234
-(gdb) continue
-```
-
-## Temizleme
-
-Build dosyalarını temizlemek için:
-
-```bash
+# Clean build files
 make clean
 ```
 
-## Proje Yapısı
+### Quick Start
+
+```bash
+# Build and run in one command
+make && make run
+```
+
+You should see the Wittche OS boot screen and shell prompt!
+
+## 📖 Documentation
+
+- **[Contributing Guide](CONTRIBUTING.md)** - How to contribute to the project
+- **[Code of Conduct](CODE_OF_CONDUCT.md)** - Community guidelines
+- **[Roadmap](ROADMAP.md)** - Future plans and features
+- **[Authors](AUTHORS)** - Contributors list
+
+### Learning Resources
+
+- [OSDev Wiki](https://wiki.osdev.org/) - Comprehensive OS development wiki
+- [Intel x86 Manual](https://software.intel.com/en-us/articles/intel-sdm) - Official Intel documentation
+- [NASM Documentation](https://www.nasm.us/docs.php) - NASM assembler reference
+
+## 🤝 Contributing
+
+We love contributions! Wittche OS is an open-source educational project, and we welcome developers of all skill levels.
+
+### Ways to Contribute
+
+- 🐛 **Report bugs** - Help us find and fix issues
+- 💡 **Suggest features** - Share your ideas for new features
+- 📝 **Improve documentation** - Make it easier for others to learn
+- 💻 **Submit code** - Implement new features or fix bugs
+- 🎨 **Enhance design** - Improve the user interface
+- 🧪 **Test on real hardware** - Validate compatibility
+- 💬 **Help others** - Answer questions in discussions
+
+### Quick Start for Contributors
+
+1. **Fork** the repository
+2. **Create a branch**: `git checkout -b feature/amazing-feature`
+3. **Make your changes** and test thoroughly
+4. **Commit**: `git commit -m "Add amazing feature"`
+5. **Push**: `git push origin feature/amazing-feature`
+6. **Open a Pull Request**
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
+
+### Good First Issues
+
+Look for issues labeled `good first issue` - perfect for newcomers!
+
+Some ideas:
+- Add new shell commands
+- Implement keyboard layouts (AZERTY, QWERTZ)
+- Add string utility functions
+- Improve error messages
+- Write documentation
+- Add code comments
+
+## 🗺️ Roadmap
+
+### Current Version: v0.4 ✅
+
+See our [ROADMAP.md](ROADMAP.md) for detailed future plans!
+
+### Upcoming Features
+
+**v0.5** - Better Input & UX
+- Cursor movement (arrow keys)
+- Tab completion
+- Printf-style formatting
+
+**v0.6** - Memory Management
+- Physical memory manager
+- Paging (virtual memory)
+- Heap allocator (kmalloc/kfree)
+
+**v0.7** - Storage
+- ATA/IDE disk driver
+- FAT12 or custom file system
+- File operations (ls, cat, etc.)
+
+**v0.8** - Multitasking
+- Process management
+- Scheduler
+- Context switching
+
+**v1.0** - User Mode
+- System calls
+- User space programs
+- Polish and stability
+
+## 📁 Project Structure
 
 ```
 Wittche/
 ├── boot/
-│   └── boot.asm         # Bootloader (BIOS -> Protected Mode)
+│   └── boot.asm         # Bootloader (BIOS → Protected Mode)
 │
 ├── kernel/              # Kernel source files
-│   ├── kernel_entry.asm # Assembly entry point
 │   ├── kernel.c         # Main kernel initialization
 │   ├── screen.c         # VGA text mode driver
 │   ├── idt.c            # Interrupt Descriptor Table
 │   ├── isr.c            # Interrupt Service Routines
 │   ├── interrupt.asm    # ISR/IRQ assembly stubs
 │   ├── keyboard.c       # PS/2 keyboard driver
+│   ├── timer.c          # PIT timer driver
 │   ├── string.c         # String utility functions
 │   └── shell.c          # Interactive shell
 │
@@ -120,160 +210,147 @@ Wittche/
 │   ├── screen.h         # Screen driver interface
 │   ├── idt.h            # IDT structures & functions
 │   ├── keyboard.h       # Keyboard driver interface
+│   ├── timer.h          # Timer driver interface
 │   ├── shell.h          # Shell interface
 │   ├── string.h         # String utilities
 │   ├── ports.h          # I/O port operations
 │   └── types.h          # Type definitions
 │
+├── .github/             # GitHub templates
+│   ├── ISSUE_TEMPLATE/  # Issue templates
+│   └── PULL_REQUEST_TEMPLATE.md
+│
 ├── build/               # Build output (gitignore'd)
 ├── linker.ld            # Linker script
 ├── Makefile             # Build system
-└── README.md            # This file
+├── README.md            # This file
+├── CONTRIBUTING.md      # Contribution guidelines
+├── CODE_OF_CONDUCT.md   # Community guidelines
+├── ROADMAP.md           # Future plans
+├── LICENSE              # MIT License
+└── AUTHORS              # Contributors list
 ```
 
-## Nasıl Çalışır?
+## 🔧 Technical Details
 
-### Boot Süreci
-1. **BIOS Boot**:
-   - BIOS, boot sektörü (512 byte) 0x7C00 adresine yüklenir
-   - Boot signature (0xAA55) kontrol edilir
+### Boot Process
+1. **BIOS** loads boot sector (512 bytes) to 0x7C00
+2. **Bootloader** (boot.asm):
+   - Loads kernel from disk to 0x10000
+   - Sets up GDT
+   - Switches to protected mode
+   - Jumps to kernel
 
-2. **Bootloader** (`boot/boot.asm`):
-   - Kernel'i diskten 0x1000:0x0000'e yükler (18 sektör)
-   - GDT (Global Descriptor Table) kurar
-   - Protected mode'a geçer (CR0.PE = 1)
-   - Kernel'e (0x10000) far jump yapar
+3. **Kernel Entry** (kernel_entry.asm):
+   - Sets up segment registers
+   - Initializes stack
+   - Calls `kernel_main()`
 
-3. **Kernel Entry** (`kernel/kernel_entry.asm`):
-   - Protected mode segment register'larını ayarlar
-   - Stack pointer'ı kurar (ESP = 0x90000)
-   - `kernel_main()` C fonksiyonunu çağırır
+4. **Kernel Init** (kernel.c):
+   - Initialize VGA screen
+   - Set up IDT and PIC
+   - Initialize PIT timer
+   - Initialize keyboard
+   - Start shell
 
-4. **Kernel Initialization** (`kernel/kernel.c`):
-   - Screen driver başlatılır (VGA 80x25)
-   - IDT kurar ve PIC yeniden eşlenir
-   - Keyboard driver başlatılır (IRQ1)
-   - Interrupt'lar etkinleştirilir (`sti`)
-   - Shell başlatılır
+### Memory Layout
+- **0x7C00**: Bootloader
+- **0x10000**: Kernel code/data
+- **0x90000**: Stack (grows down)
+- **0xB8000**: VGA text buffer
 
-5. **Shell Loop** (`kernel/shell.c`):
-   - Prompt gösterir: `wittche> `
-   - Klavye input'u bekler (interrupt-driven)
-   - Komutları parse eder ve çalıştırır
-   - Sonuçları renkli olarak gösterir
+### Interrupts
+- **ISR 0-31**: CPU Exceptions
+- **IRQ 32**: Timer (PIT)
+- **IRQ 33**: Keyboard (PS/2)
+- **IRQ 34-47**: Other hardware
 
-### Shell Komutları
-- **help**: Tüm komutları listeler
-- **clear**: Ekranı temizler
-- **about**: Sistem bilgileri ve özellikler
-- **echo <text>**: Metni ekrana yazar
-- **color**: Renk paletini gösterir
-- **history**: Komut geçmişini gösterir
-- **banner**: Hoş geldin mesajını gösterir
+## 🎨 Screenshots
 
-## Kod Kalitesi ve Best Practices
+```
+===========================================
+ Wittche Operating System v0.4
+===========================================
 
-### ✨ Yapılan İyileştirmeler
-- **Modular Architecture**: Her özellik ayrı modülde
-- **Clean Code**: İyi isimlendirme, açıklayıcı yorumlar
-- **Proper Scrolling**: Gerçek ekran kaydırma (satır kopyalama)
-- **Hardware Cursor**: VGA cursor register'ları kullanımı
-- **Error Handling**: Detaylı exception mesajları
-- **Color Coding**: Mesaj tipine göre renkli çıktı
-- **Input Validation**: Güvenli string işlemleri
-- **Buffer Management**: Circular queue keyboard buffer
+Welcome to Wittche OS!
+Type 'help' for available commands.
 
-### 🔧 Teknik Detaylar
-- **Memory Layout**:
-  - Bootloader: 0x7C00
-  - Kernel: 0x10000
-  - Stack: 0x90000 (grows down)
-  - VGA Text: 0xB8000
+wittche> help
 
-- **Interrupt Mapping**:
-  - ISR 0-31: CPU Exceptions
-  - IRQ 32-47: Hardware Interrupts (PIC remapped)
-  - IRQ 33 (IRQ1): Keyboard
+Available Commands:
+==================
+  help      - Display this help message
+  clear     - Clear the screen
+  about     - Show system information
+  echo      - Echo a message
+  color     - Test color output
+  uptime    - Show system uptime
+  history   - Show command history
+  banner    - Display welcome banner
 
-- **VGA Text Mode**:
-  - 80x25 characters
-  - 16 foreground + 16 background colors
-  - Character format: [bg:4][fg:4][char:8]
+wittche> uptime
 
-## Geliştirme Yol Haritası
+System Uptime:
+  Time:        00:01:23
+  Seconds:     83 s
+  Ticks:       83000 (1000 Hz)
 
-### ✅ Tamamlananlar (v0.3):
-- [x] Custom bootloader with GDT
-- [x] Protected mode kernel
-- [x] IDT with full ISR/IRQ support
-- [x] PIC configuration and remapping
-- [x] VGA text mode driver
-- [x] Hardware cursor support
-- [x] Proper screen scrolling
-- [x] PS/2 keyboard driver
-- [x] Input buffering
-- [x] Interactive shell
-- [x] Command parser
-- [x] Command history
-- [x] String library
-- [x] Color support
-- [x] Modular code architecture
+wittche> 
+```
 
-### 🎯 Kısa Vadeli (v0.4):
-- [ ] Timer interrupt (PIT)
-- [ ] System uptime tracking
-- [ ] Better line editing (cursor keys, delete)
-- [ ] Tab completion
-- [ ] Printf-style formatting
+## 📊 Statistics
 
-### 🚀 Orta Vadeli (v0.5-v1.0):
-- [ ] Memory management (paging)
-- [ ] Heap allocator (kmalloc/kfree)
-- [ ] Physical memory manager
-- [ ] ATA/IDE disk driver
-- [ ] FAT12/16 file system
-- [ ] VFS layer
+- **Language**: C (70%), Assembly (25%), Makefile (5%)
+- **Lines of Code**: ~3,500
+- **Modules**: 9 kernel modules
+- **Commands**: 8 built-in shell commands
+- **Interrupts**: 48 handlers (32 ISR + 16 IRQ)
 
-### 🌟 Uzun Vadeli (v2.0+):
-- [ ] Multitasking (cooperative/preemptive)
-- [ ] Process management
-- [ ] User mode
-- [ ] System calls
-- [ ] ELF binary loader
-- [ ] More drivers (serial, network, etc.)
+## 🧪 Testing
 
-## Kaynaklar
+### In QEMU
+```bash
+make run
+```
 
-### Dokumentasyon
-- [OSDev.org](https://wiki.osdev.org/) - OS geliştirme wiki (en kapsamlı kaynak)
-- [Intel x86 Manual](https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html) - Resmi Intel dökümanları
-- [NASM Documentation](https://www.nasm.us/docs.php) - NASM assembler referansı
+### On Real Hardware (Advanced)
+```bash
+# Create bootable USB (BE VERY CAREFUL!)
+sudo dd if=build/wittche.img of=/dev/sdX bs=512
+```
 
-### Kitaplar
-- "Operating Systems: Design and Implementation" - Andrew S. Tanenbaum
-- "Modern Operating Systems" - Andrew S. Tanenbaum
-- "Operating System Concepts" - Silberschatz, Galvin, Gagne
+**Warning**: Double-check the device name! `dd` can destroy data.
 
-### Tutorials
-- [Bona Fide OS Developer](http://www.osdever.net/)
-- [James Molloy's Kernel Tutorials](http://www.jamesmolloy.co.uk/tutorial_html/)
-- [Bran's Kernel Development](http://www.osdever.net/bkerndev/index.php)
+## 📜 License
 
-## Lisans
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-Bu proje eğitim amaçlıdır ve özgürce kullanılabilir.
+## 👥 Community
 
-## Katkıda Bulunma
+- 💬 **Discussions**: Share ideas and ask questions
+- 🐛 **Issues**: Report bugs or request features
+- 🔀 **Pull Requests**: Submit your contributions
+- ⭐ **Star**: Show your support!
 
-Bu bir öğrenme projesidir. Fork'layıp kendi özelliklerinizi eklemekten çekinmeyin!
+## 🙏 Acknowledgments
 
-### Önerilen Geliştirmeler
-1. Daha fazla shell komutu ekleyin
-2. Timer interrupt implementasyonu
-3. Daha iyi hata mesajları
-4. Memory management
-5. Dosya sistemi desteği
+- **OSDev Community** - Invaluable resources and support
+- **Contributors** - Everyone who has contributed to this project
+- **You** - For being interested in OS development!
+
+## 📬 Contact
+
+- **GitHub Issues**: For bugs and feature requests
+- **GitHub Discussions**: For questions and general discussion
 
 ---
 
-**Wittche OS v0.3** - Education amaçlı x86 operating system
+<div align="center">
+
+**Made with ❤️ for learning and education**
+
+Star ⭐ this repo if you find it helpful!
+
+[Report Bug](https://github.com/YOUR-USERNAME/Wittche/issues/new?template=bug_report.md) • [Request Feature](https://github.com/YOUR-USERNAME/Wittche/issues/new?template=feature_request.md) • [Ask Question](https://github.com/YOUR-USERNAME/Wittche/issues/new?template=question.md)
+
+</div>

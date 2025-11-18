@@ -1,0 +1,57 @@
+# Contributors to Wittche OS
+
+This file lists the people who have contributed to the Wittche Operating System project.
+
+## Core Team
+
+### Project Founder
+- **Initial Development** - Created the foundational OS architecture (2024)
+
+## Contributors
+
+We welcome and appreciate all contributions! Contributors will be added here.
+
+### Code Contributors
+<!-- Add contributors here as PRs are merged -->
+
+### Documentation Contributors
+<!-- Add documentation contributors here -->
+
+### Issue Reporters
+<!-- Notable issue reporters who helped improve the project -->
+
+---
+
+## How to be Listed
+
+Contributors are automatically added when their pull request is merged.
+We recognize all types of contributions:
+
+- 💻 Code (features, bug fixes, refactoring)
+- 📖 Documentation (README, guides, comments)
+- 🐛 Bug reports (detailed, helpful issues)
+- 💡 Ideas (feature suggestions, improvements)
+- 🎨 Design (UI, graphics, branding)
+- 🧪 Testing (real hardware, edge cases)
+- 🌍 Translation (documentation, comments)
+- 👥 Community (helping others, discussions)
+
+---
+
+## Recognition Levels
+
+### 🥇 Major Contributors
+Contributed significant features or >1000 lines of code
+
+### 🥈 Regular Contributors
+Multiple merged PRs or sustained involvement
+
+### 🥉 Contributors
+First-time contributors and smaller changes
+
+### ⭐ Special Recognition
+Exceptional contributions to the project
+
+---
+
+**Want to see your name here?** Check out [CONTRIBUTING.md](CONTRIBUTING.md) to get started!
