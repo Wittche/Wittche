@@ -17,6 +17,13 @@
  * Called from kernel_entry.asm after bootloader hands control
  */
 void kernel_main(void) {
+    // Direct VGA write for early debug (address 0xB8000)
+    unsigned short *vga = (unsigned short *)0xB8000;
+    const char *msg = "KERNEL STARTED!";
+    for (int i = 0; msg[i] != '\0'; i++) {
+        vga[i] = (unsigned short)((0x0F << 8) | msg[i]);
+    }
+
     // Initialize screen/VGA driver
     screen_init();
 
