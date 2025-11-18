@@ -1,16 +1,39 @@
 # Wittche Operating System
 
-Wittche, x86 mimarisi için geliştirilmiş basit bir işletim sistemidir. Eğitim ve öğrenme amaçlı olarak tasarlanmıştır.
+Wittche, x86 mimarisi için geliştirilmiş eğitim amaçlı bir işletim sistemidir. Sıfırdan yazılmış, temiz ve anlaşılır kod yapısıyla OS geliştirme öğrenmek isteyenler için mükemmel bir başlangıç noktasıdır.
 
 ## Özellikler
 
-- ✅ **Bootloader**: BIOS tarafından yüklenen, protected mode'a geçiş yapan bootloader
-- ✅ **32-bit Kernel**: C ile yazılmış temel kernel
-- ✅ **VGA Text Mode**: Ekrana metin yazdırma desteği
-- ✅ **IDT (Interrupt Descriptor Table)**: Interrupt yönetimi
-- ✅ **Keyboard Driver**: PS/2 klavye desteği, scancode to ASCII dönüşümü
-- ✅ **Simple Shell**: Temel komut satırı arayüzü (help, clear, about, echo)
-- ✅ **Temel Fonksiyonlar**: String işlemleri, hafıza işlemleri
+### 🚀 Core Features
+- ✅ **Custom Bootloader**: BIOS boot, GDT setup, protected mode geçişi
+- ✅ **32-bit Protected Mode Kernel**: Tamamen C ve Assembly ile yazılmış
+- ✅ **Interrupt Management**: Tam IDT ve ISR/IRQ desteği
+- ✅ **Hardware Drivers**: PS/2 klavye, VGA text mode
+
+### 🎨 Display
+- ✅ **VGA Text Mode Driver**: 80x25 renkli metin çıktısı
+- ✅ **Hardware Cursor**: VGA donanım cursor desteği
+- ✅ **Proper Scrolling**: Otomatik ekran kaydırma
+- ✅ **16 Color Support**: Tam VGA renk paleti
+
+### ⌨️ Input
+- ✅ **PS/2 Keyboard Driver**: Donanım interrupt tabanlı
+- ✅ **Scancode to ASCII**: US QWERTY layout
+- ✅ **Special Keys**: Shift, Caps Lock, Backspace, Enter desteği
+- ✅ **Input Buffering**: Circular queue ile klavye buffer'ı
+
+### 💻 Shell
+- ✅ **Interactive Shell**: Tam özellikli komut satırı arayüzü
+- ✅ **Command Parser**: Argüman ayrıştırma ve tokenization
+- ✅ **Command History**: Son 10 komut geçmişi
+- ✅ **Built-in Commands**: help, clear, about, echo, color, history, banner
+- ✅ **Colorful Output**: Renkli komut çıktıları
+
+### 📚 Libraries
+- ✅ **String Library**: strlen, strcmp, strcpy, strcat, split, trim, vb.
+- ✅ **Memory Functions**: memset, memcpy, memcmp
+- ✅ **Conversion Functions**: atoi, itoa (çeşitli tabanlar)
+- ✅ **Modular Design**: Temiz, ayrılmış modül yapısı
 
 ## Gereksinimler
 
@@ -42,11 +65,7 @@ Projeyi derlemek için:
 make
 ```
 
-Bu komut şunları yapacaktır:
-1. Bootloader'ı derler (`boot/boot.asm`)
-2. Kernel entry point'i derler (`kernel/kernel_entry.asm`)
-3. Kernel kodunu derler (`kernel/kernel.c`)
-4. Tüm parçaları birleştirip `build/wittche.img` oluşturur
+Bu komut tüm kaynak dosyaları derleyip `build/wittche.img` dosyasını oluşturur.
 
 ## Çalıştırma
 
@@ -83,80 +102,162 @@ make clean
 ```
 Wittche/
 ├── boot/
-│   └── boot.asm         # Bootloader (16-bit -> 32-bit protected mode)
-├── kernel/
-│   ├── kernel_entry.asm # Kernel giriş noktası
-│   ├── kernel.c         # Ana kernel kodu ve shell
+│   └── boot.asm         # Bootloader (BIOS -> Protected Mode)
+│
+├── kernel/              # Kernel source files
+│   ├── kernel_entry.asm # Assembly entry point
+│   ├── kernel.c         # Main kernel initialization
+│   ├── screen.c         # VGA text mode driver
 │   ├── idt.c            # Interrupt Descriptor Table
 │   ├── isr.c            # Interrupt Service Routines
-│   ├── interrupt.asm    # Interrupt handler stubs
-│   └── keyboard.c       # Klavye sürücüsü
-├── include/
-│   ├── kernel.h         # Kernel header dosyası
-│   ├── idt.h            # IDT header
-│   ├── keyboard.h       # Klavye sürücüsü header
-│   ├── ports.h          # I/O port fonksiyonları
-│   └── types.h          # Tip tanımlamaları
-├── build/               # Build çıktıları (git'e eklenmez)
+│   ├── interrupt.asm    # ISR/IRQ assembly stubs
+│   ├── keyboard.c       # PS/2 keyboard driver
+│   ├── string.c         # String utility functions
+│   └── shell.c          # Interactive shell
+│
+├── include/             # Header files
+│   ├── kernel.h         # Kernel main header
+│   ├── screen.h         # Screen driver interface
+│   ├── idt.h            # IDT structures & functions
+│   ├── keyboard.h       # Keyboard driver interface
+│   ├── shell.h          # Shell interface
+│   ├── string.h         # String utilities
+│   ├── ports.h          # I/O port operations
+│   └── types.h          # Type definitions
+│
+├── build/               # Build output (gitignore'd)
 ├── linker.ld            # Linker script
-├── Makefile             # Build sistemi
-└── README.md            # Bu dosya
+├── Makefile             # Build system
+└── README.md            # This file
 ```
 
 ## Nasıl Çalışır?
 
-1. **BIOS Boot**: Bilgisayar açıldığında BIOS, ilk sektörü (boot sector) 0x7C00 adresine yükler
-2. **Bootloader**: `boot/boot.asm` çalışır:
-   - Diskten kernel'i okur
+### Boot Süreci
+1. **BIOS Boot**:
+   - BIOS, boot sektörü (512 byte) 0x7C00 adresine yüklenir
+   - Boot signature (0xAA55) kontrol edilir
+
+2. **Bootloader** (`boot/boot.asm`):
+   - Kernel'i diskten 0x1000:0x0000'e yükler (18 sektör)
    - GDT (Global Descriptor Table) kurar
-   - Protected mode'a geçer
-   - Kernel'e (0x10000) atlar
-3. **Kernel Entry**: `kernel/kernel_entry.asm` çalışır ve `kernel_main()` fonksiyonunu çağırır
-4. **Kernel Main**: `kernel/kernel.c` içindeki `kernel_main()`:
-   - Ekranı temizler
-   - IDT (Interrupt Descriptor Table) kurar
-   - PIC (Programmable Interrupt Controller) yapılandırır
-   - Klavye sürücüsünü başlatır
-   - Interrupt'ları etkinleştirir (sti)
-   - Shell döngüsüne girer
-5. **Shell**: Kullanıcıdan komut alır ve işler:
-   - `help`: Kullanılabilir komutları gösterir
-   - `clear`: Ekranı temizler
-   - `about`: Sistem bilgilerini gösterir
-   - `echo <mesaj>`: Mesajı ekrana yazar
+   - Protected mode'a geçer (CR0.PE = 1)
+   - Kernel'e (0x10000) far jump yapar
+
+3. **Kernel Entry** (`kernel/kernel_entry.asm`):
+   - Protected mode segment register'larını ayarlar
+   - Stack pointer'ı kurar (ESP = 0x90000)
+   - `kernel_main()` C fonksiyonunu çağırır
+
+4. **Kernel Initialization** (`kernel/kernel.c`):
+   - Screen driver başlatılır (VGA 80x25)
+   - IDT kurar ve PIC yeniden eşlenir
+   - Keyboard driver başlatılır (IRQ1)
+   - Interrupt'lar etkinleştirilir (`sti`)
+   - Shell başlatılır
+
+5. **Shell Loop** (`kernel/shell.c`):
+   - Prompt gösterir: `wittche> `
+   - Klavye input'u bekler (interrupt-driven)
+   - Komutları parse eder ve çalıştırır
+   - Sonuçları renkli olarak gösterir
+
+### Shell Komutları
+- **help**: Tüm komutları listeler
+- **clear**: Ekranı temizler
+- **about**: Sistem bilgileri ve özellikler
+- **echo <text>**: Metni ekrana yazar
+- **color**: Renk paletini gösterir
+- **history**: Komut geçmişini gösterir
+- **banner**: Hoş geldin mesajını gösterir
+
+## Kod Kalitesi ve Best Practices
+
+### ✨ Yapılan İyileştirmeler
+- **Modular Architecture**: Her özellik ayrı modülde
+- **Clean Code**: İyi isimlendirme, açıklayıcı yorumlar
+- **Proper Scrolling**: Gerçek ekran kaydırma (satır kopyalama)
+- **Hardware Cursor**: VGA cursor register'ları kullanımı
+- **Error Handling**: Detaylı exception mesajları
+- **Color Coding**: Mesaj tipine göre renkli çıktı
+- **Input Validation**: Güvenli string işlemleri
+- **Buffer Management**: Circular queue keyboard buffer
+
+### 🔧 Teknik Detaylar
+- **Memory Layout**:
+  - Bootloader: 0x7C00
+  - Kernel: 0x10000
+  - Stack: 0x90000 (grows down)
+  - VGA Text: 0xB8000
+
+- **Interrupt Mapping**:
+  - ISR 0-31: CPU Exceptions
+  - IRQ 32-47: Hardware Interrupts (PIC remapped)
+  - IRQ 33 (IRQ1): Keyboard
+
+- **VGA Text Mode**:
+  - 80x25 characters
+  - 16 foreground + 16 background colors
+  - Character format: [bg:4][fg:4][char:8]
 
 ## Geliştirme Yol Haritası
 
-### Tamamlananlar:
-- [x] Klavye girişi (Interrupt handler)
-- [x] Interrupt Descriptor Table (IDT)
-- [x] Basit komut satırı (shell)
-- [x] PIC (Programmable Interrupt Controller) konfigürasyonu
+### ✅ Tamamlananlar (v0.3):
+- [x] Custom bootloader with GDT
+- [x] Protected mode kernel
+- [x] IDT with full ISR/IRQ support
+- [x] PIC configuration and remapping
+- [x] VGA text mode driver
+- [x] Hardware cursor support
+- [x] Proper screen scrolling
+- [x] PS/2 keyboard driver
+- [x] Input buffering
+- [x] Interactive shell
+- [x] Command parser
+- [x] Command history
+- [x] String library
+- [x] Color support
+- [x] Modular code architecture
 
-### Kısa Vadeli:
-- [ ] Daha gelişmiş ekran çıktısı (scroll, cursor, renkler)
-- [ ] Timer interrupt (PIT - Programmable Interval Timer)
-- [ ] Daha fazla shell komutu
-- [ ] String parsing ve tokenization
+### 🎯 Kısa Vadeli (v0.4):
+- [ ] Timer interrupt (PIT)
+- [ ] System uptime tracking
+- [ ] Better line editing (cursor keys, delete)
+- [ ] Tab completion
+- [ ] Printf-style formatting
 
-### Orta Vadeli:
-- [ ] Hafıza yönetimi (paging)
+### 🚀 Orta Vadeli (v0.5-v1.0):
+- [ ] Memory management (paging)
 - [ ] Heap allocator (kmalloc/kfree)
-- [ ] VFS (Virtual File System) katmanı
-- [ ] Basit dosya sistemi (FAT12 veya custom)
+- [ ] Physical memory manager
+- [ ] ATA/IDE disk driver
+- [ ] FAT12/16 file system
+- [ ] VFS layer
 
-### Uzun Vadeli:
-- [ ] Çoklu görev (multitasking)
-- [ ] Process/Thread yönetimi
-- [ ] Kullanıcı modu
-- [ ] Sistem çağrıları (syscalls)
-- [ ] Daha fazla sürücü (ATA disk, serial port, vb.)
+### 🌟 Uzun Vadeli (v2.0+):
+- [ ] Multitasking (cooperative/preemptive)
+- [ ] Process management
+- [ ] User mode
+- [ ] System calls
+- [ ] ELF binary loader
+- [ ] More drivers (serial, network, etc.)
 
 ## Kaynaklar
 
-- [OSDev.org](https://wiki.osdev.org/) - OS geliştirme wiki
-- [Intel x86 Manual](https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html)
-- [NASM Documentation](https://www.nasm.us/docs.php)
+### Dokumentasyon
+- [OSDev.org](https://wiki.osdev.org/) - OS geliştirme wiki (en kapsamlı kaynak)
+- [Intel x86 Manual](https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html) - Resmi Intel dökümanları
+- [NASM Documentation](https://www.nasm.us/docs.php) - NASM assembler referansı
+
+### Kitaplar
+- "Operating Systems: Design and Implementation" - Andrew S. Tanenbaum
+- "Modern Operating Systems" - Andrew S. Tanenbaum
+- "Operating System Concepts" - Silberschatz, Galvin, Gagne
+
+### Tutorials
+- [Bona Fide OS Developer](http://www.osdever.net/)
+- [James Molloy's Kernel Tutorials](http://www.jamesmolloy.co.uk/tutorial_html/)
+- [Bran's Kernel Development](http://www.osdever.net/bkerndev/index.php)
 
 ## Lisans
 
@@ -164,8 +265,15 @@ Bu proje eğitim amaçlıdır ve özgürce kullanılabilir.
 
 ## Katkıda Bulunma
 
-Bu bir öğrenme projesidir. Fork'layıp kendi özelliklerinizi ekleyebilirsiniz!
+Bu bir öğrenme projesidir. Fork'layıp kendi özelliklerinizi eklemekten çekinmeyin!
+
+### Önerilen Geliştirmeler
+1. Daha fazla shell komutu ekleyin
+2. Timer interrupt implementasyonu
+3. Daha iyi hata mesajları
+4. Memory management
+5. Dosya sistemi desteği
 
 ---
 
-**Not**: Bu işletim sistemi hala geliştirilme aşamasındadır ve production kullanımı için uygun değildir.
+**Wittche OS v0.3** - Education amaçlı x86 operating system

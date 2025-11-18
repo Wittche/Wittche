@@ -2,7 +2,7 @@
 #include "../include/idt.h"
 #include "../include/types.h"
 #include "../include/ports.h"
-#include "../include/kernel.h"
+#include "../include/screen.h"
 
 // IDT has 256 entries
 #define IDT_ENTRIES 256
@@ -156,5 +156,8 @@ void idt_init(void) {
     // Enable interrupts
     __asm__ __volatile__("sti");
 
-    print_string("[IDT] Interrupt Descriptor Table initialized\n");
+    screen_write_color("[IDT] ", MAKE_COLOR(COLOR_GREEN, COLOR_BLACK));
+    screen_write("Interrupt Descriptor Table initialized\n");
+    screen_write_color("[PIC] ", MAKE_COLOR(COLOR_GREEN, COLOR_BLACK));
+    screen_write("Programmable Interrupt Controller configured\n");
 }

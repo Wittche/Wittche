@@ -1,0 +1,284 @@
+// Shell implementation
+#include "../include/screen.h"
+#include "../include/string.h"
+#include "../include/keyboard.h"
+#include "../include/types.h"
+
+// Command history
+#define MAX_HISTORY 10
+#define MAX_CMD_LENGTH 256
+
+static char command_history[MAX_HISTORY][MAX_CMD_LENGTH];
+static int history_count = 0;
+
+// System uptime (in timer ticks - not implemented yet)
+static uint32_t system_uptime = 0;
+
+/**
+ * Display welcome banner
+ */
+void shell_display_banner(void) {
+    screen_write_color("\n", DEFAULT_COLOR);
+    screen_write_color("===========================================\n", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
+    screen_write_color(" Wittche Operating System v0.3\n", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
+    screen_write_color("===========================================\n", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
+    screen_write("\n");
+    screen_write("Welcome to Wittche OS!\n");
+    screen_write("Type 'help' for available commands.\n\n");
+}
+
+/**
+ * Display command prompt
+ */
+void shell_prompt(void) {
+    screen_write_color("wittche", MAKE_COLOR(COLOR_GREEN, COLOR_BLACK));
+    screen_write_color("> ", MAKE_COLOR(COLOR_LIGHT_GREY, COLOR_BLACK));
+}
+
+/**
+ * Help command
+ */
+static void cmd_help(void) {
+    screen_write("\n");
+    screen_write_color("Available Commands:\n", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
+    screen_write_color("==================\n", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
+    screen_write_color("  help", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
+    screen_write("      - Display this help message\n");
+    screen_write_color("  clear", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
+    screen_write("     - Clear the screen\n");
+    screen_write_color("  about", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
+    screen_write("     - Show system information\n");
+    screen_write_color("  echo", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
+    screen_write("      - Echo a message\n");
+    screen_write_color("  color", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
+    screen_write("     - Test color output\n");
+    screen_write_color("  uptime", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
+    screen_write("    - Show system uptime\n");
+    screen_write_color("  history", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
+    screen_write("   - Show command history\n");
+    screen_write_color("  banner", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
+    screen_write("    - Display welcome banner\n");
+    screen_write("\n");
+}
+
+/**
+ * Clear command
+ */
+static void cmd_clear(void) {
+    screen_clear();
+}
+
+/**
+ * About command
+ */
+static void cmd_about(void) {
+    screen_write("\n");
+    screen_write_color("Wittche Operating System v0.3\n", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
+    screen_write_color("===============================\n", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
+    screen_write("\n");
+    screen_write("A simple x86 operating system for educational purposes.\n\n");
+
+    screen_write_color("Features:\n", MAKE_COLOR(COLOR_GREEN, COLOR_BLACK));
+    screen_write("  - 32-bit protected mode kernel\n");
+    screen_write("  - Hardware interrupt handling (IDT)\n");
+    screen_write("  - PS/2 keyboard driver\n");
+    screen_write("  - VGA text mode with hardware cursor\n");
+    screen_write("  - Proper screen scrolling\n");
+    screen_write("  - Interactive shell with command parsing\n");
+    screen_write("\n");
+
+    screen_write_color("Technical Info:\n", MAKE_COLOR(COLOR_GREEN, COLOR_BLACK));
+    screen_write("  Architecture:   x86 (32-bit)\n");
+    screen_write("  Kernel at:      ");
+    screen_write_hex(0x10000);
+    screen_write("\n");
+    screen_write("  Video Memory:   ");
+    screen_write_hex(0xB8000);
+    screen_write("\n");
+    screen_write("  Screen Size:    80x25 characters\n");
+    screen_write("\n");
+}
+
+/**
+ * Echo command
+ */
+static void cmd_echo(char *args) {
+    screen_write("\n");
+    if (args && *args) {
+        screen_write(args);
+    }
+    screen_write("\n");
+}
+
+/**
+ * Color test command
+ */
+static void cmd_color(void) {
+    screen_write("\n");
+    screen_write_color("Color Test:\n", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
+
+    screen_write_color("  Black ", MAKE_COLOR(COLOR_BLACK, COLOR_LIGHT_GREY));
+    screen_write_color("  Blue ", MAKE_COLOR(COLOR_BLUE, COLOR_BLACK));
+    screen_write_color("  Green ", MAKE_COLOR(COLOR_GREEN, COLOR_BLACK));
+    screen_write_color("  Cyan ", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
+    screen_write("\n");
+
+    screen_write_color("  Red ", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
+    screen_write_color("  Magenta ", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
+    screen_write_color("  Brown ", MAKE_COLOR(COLOR_BROWN, COLOR_BLACK));
+    screen_write_color("  Light Grey ", MAKE_COLOR(COLOR_LIGHT_GREY, COLOR_BLACK));
+    screen_write("\n");
+
+    screen_write_color("  Dark Grey ", MAKE_COLOR(COLOR_DARK_GREY, COLOR_BLACK));
+    screen_write_color("  Light Blue ", MAKE_COLOR(COLOR_LIGHT_BLUE, COLOR_BLACK));
+    screen_write_color("  Light Green ", MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
+    screen_write_color("  Light Cyan ", MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
+    screen_write("\n");
+
+    screen_write_color("  Light Red ", MAKE_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
+    screen_write_color("  Light Magenta ", MAKE_COLOR(COLOR_LIGHT_MAGENTA, COLOR_BLACK));
+    screen_write_color("  Yellow ", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
+    screen_write_color("  White ", MAKE_COLOR(COLOR_WHITE, COLOR_BLACK));
+    screen_write("\n\n");
+}
+
+/**
+ * Uptime command
+ */
+static void cmd_uptime(void) {
+    screen_write("\n");
+    screen_write("System uptime: ");
+    screen_write_dec(system_uptime);
+    screen_write(" ticks");
+    screen_write_color(" (Timer not implemented yet)", MAKE_COLOR(COLOR_DARK_GREY, COLOR_BLACK));
+    screen_write("\n");
+}
+
+/**
+ * History command
+ */
+static void cmd_history(void) {
+    screen_write("\n");
+    if (history_count == 0) {
+        screen_write("No command history.\n");
+        return;
+    }
+
+    screen_write_color("Command History:\n", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
+    for (int i = 0; i < history_count; i++) {
+        screen_write("  ");
+        screen_write_dec(i + 1);
+        screen_write(". ");
+        screen_write(command_history[i]);
+        screen_write("\n");
+    }
+    screen_write("\n");
+}
+
+/**
+ * Banner command
+ */
+static void cmd_banner(void) {
+    shell_display_banner();
+}
+
+/**
+ * Add command to history
+ */
+static void shell_add_history(const char *command) {
+    if (!command || *command == '\0') return;
+
+    // Don't add duplicate of last command
+    if (history_count > 0 && strcmp(command_history[history_count - 1], command) == 0) {
+        return;
+    }
+
+    // Shift history if full
+    if (history_count >= MAX_HISTORY) {
+        for (int i = 0; i < MAX_HISTORY - 1; i++) {
+            strcpy(command_history[i], command_history[i + 1]);
+        }
+        history_count = MAX_HISTORY - 1;
+    }
+
+    // Add new command
+    strncpy(command_history[history_count], command, MAX_CMD_LENGTH - 1);
+    command_history[history_count][MAX_CMD_LENGTH - 1] = '\0';
+    history_count++;
+}
+
+/**
+ * Process a shell command
+ */
+void shell_process_command(char *command) {
+    // Trim whitespace
+    str_trim(command);
+
+    // Empty command
+    if (*command == '\0') {
+        screen_write("\n");
+        return;
+    }
+
+    // Add to history
+    shell_add_history(command);
+
+    // Parse command and arguments
+    char *tokens[10];
+    char cmd_copy[MAX_CMD_LENGTH];
+    strncpy(cmd_copy, command, MAX_CMD_LENGTH);
+
+    int token_count = str_split(cmd_copy, ' ', tokens, 10);
+
+    if (token_count == 0) {
+        screen_write("\n");
+        return;
+    }
+
+    char *cmd = tokens[0];
+    char *args = (token_count > 1) ? tokens[1] : NULL;
+
+    // Find full args string (everything after first token)
+    char *full_args = command;
+    while (*full_args && *full_args != ' ') full_args++;
+    while (*full_args == ' ') full_args++;
+
+    // Execute command
+    if (strcmp(cmd, "help") == 0) {
+        cmd_help();
+    } else if (strcmp(cmd, "clear") == 0) {
+        cmd_clear();
+    } else if (strcmp(cmd, "about") == 0) {
+        cmd_about();
+    } else if (strcmp(cmd, "echo") == 0) {
+        cmd_echo(full_args);
+    } else if (strcmp(cmd, "color") == 0) {
+        cmd_color();
+    } else if (strcmp(cmd, "uptime") == 0) {
+        cmd_uptime();
+    } else if (strcmp(cmd, "history") == 0) {
+        cmd_history();
+    } else if (strcmp(cmd, "banner") == 0) {
+        cmd_banner();
+    } else {
+        screen_write("\n");
+        screen_write_color("Error: ", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
+        screen_write("Unknown command '");
+        screen_write(cmd);
+        screen_write("'\n");
+        screen_write("Type 'help' for available commands.\n");
+    }
+}
+
+/**
+ * Shell main loop
+ */
+void shell_run(void) {
+    char command_buffer[MAX_CMD_LENGTH];
+
+    while (1) {
+        shell_prompt();
+        keyboard_get_line(command_buffer, MAX_CMD_LENGTH);
+        shell_process_command(command_buffer);
+    }
+}

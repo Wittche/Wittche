@@ -1,6 +1,6 @@
 // Interrupt Service Routines
 #include "../include/types.h"
-#include "../include/kernel.h"
+#include "../include/screen.h"
 #include "../include/keyboard.h"
 
 // Registers struct passed from assembly
@@ -53,15 +53,22 @@ extern void pic_send_eoi(uint8_t irq);
 // ISR handler
 void isr_handler(struct registers *regs) {
     if (regs->int_no < 32) {
-        print_string("\n[EXCEPTION] ");
-        print_string(exception_messages[regs->int_no]);
-        print_string(" Exception (");
-        print_hex(regs->int_no);
-        print_string(")\n");
-        print_string("Error Code: ");
-        print_hex(regs->err_code);
-        print_string("\n");
-        print_string("System Halted!\n");
+        screen_write("\n");
+        screen_write_color("[EXCEPTION] ", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
+        screen_write_color(exception_messages[regs->int_no], MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
+        screen_write(" Exception (");
+        screen_write_hex(regs->int_no);
+        screen_write(")\n");
+
+        screen_write_color("Error Code: ", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
+        screen_write_hex(regs->err_code);
+        screen_write("\n");
+
+        screen_write_color("EIP: ", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
+        screen_write_hex(regs->eip);
+        screen_write("\n");
+
+        screen_write_color("\nSYSTEM HALTED!\n", MAKE_COLOR(COLOR_WHITE, COLOR_RED));
 
         // Hang the system
         for (;;) {

@@ -1,7 +1,7 @@
 // Keyboard driver implementation
 #include "../include/keyboard.h"
 #include "../include/ports.h"
-#include "../include/kernel.h"
+#include "../include/screen.h"
 #include "../include/types.h"
 
 // Keyboard state
@@ -100,16 +100,8 @@ void keyboard_handler(void) {
     // Add to buffer if valid character
     if (ascii != 0) {
         keyboard_buffer_add(ascii);
-
         // Echo character to screen
-        if (ascii == '\b') {
-            print_string("\b \b");  // Backspace: move back, space, move back
-        } else if (ascii == '\n') {
-            print_char('\n', 0x0F, 0, 0);  // Newline
-        } else {
-            char str[2] = {ascii, '\0'};
-            print_string(str);
-        }
+        screen_putchar(ascii);
     }
 }
 
@@ -121,7 +113,8 @@ void keyboard_init(void) {
     caps_lock = 0;
     ctrl_pressed = 0;
 
-    print_string("[KEYBOARD] Keyboard driver initialized\n");
+    screen_write_color("[KEYBOARD] ", MAKE_COLOR(COLOR_GREEN, COLOR_BLACK));
+    screen_write("Keyboard driver initialized\n");
 }
 
 // Get a line of input from keyboard
