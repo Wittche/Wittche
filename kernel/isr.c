@@ -2,6 +2,7 @@
 #include "../include/types.h"
 #include "../include/screen.h"
 #include "../include/keyboard.h"
+#include "../include/timer.h"
 
 // Registers struct passed from assembly
 struct registers {
@@ -85,7 +86,7 @@ void irq_handler(struct registers *regs) {
     // Handle specific IRQs
     switch (irq) {
         case 0:  // Timer
-            // Timer handler (not implemented yet)
+            timer_handler();
             break;
 
         case 1:  // Keyboard

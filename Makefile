@@ -24,6 +24,7 @@ OBJS = $(BUILD_DIR)/kernel_entry.o \
        $(BUILD_DIR)/isr.o \
        $(BUILD_DIR)/interrupt.o \
        $(BUILD_DIR)/keyboard.o \
+       $(BUILD_DIR)/timer.o \
        $(BUILD_DIR)/shell.o
 
 # Output files

@@ -9,6 +9,7 @@
 #include "../include/screen.h"
 #include "../include/idt.h"
 #include "../include/keyboard.h"
+#include "../include/timer.h"
 #include "../include/shell.h"
 
 /**
@@ -27,6 +28,9 @@ void kernel_main(void) {
 
     // Initialize Interrupt Descriptor Table
     idt_init();
+
+    // Initialize timer (PIT)
+    timer_init();
 
     // Initialize keyboard driver
     keyboard_init();

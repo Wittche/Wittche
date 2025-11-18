@@ -2,6 +2,7 @@
 #include "../include/screen.h"
 #include "../include/string.h"
 #include "../include/keyboard.h"
+#include "../include/timer.h"
 #include "../include/types.h"
 
 // Command history
@@ -11,16 +12,13 @@
 static char command_history[MAX_HISTORY][MAX_CMD_LENGTH];
 static int history_count = 0;
 
-// System uptime (in timer ticks - not implemented yet)
-static uint32_t system_uptime = 0;
-
 /**
  * Display welcome banner
  */
 void shell_display_banner(void) {
     screen_write_color("\n", DEFAULT_COLOR);
     screen_write_color("===========================================\n", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
-    screen_write_color(" Wittche Operating System v0.3\n", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
+    screen_write_color(" Wittche Operating System v0.4\n", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
     screen_write_color("===========================================\n", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
     screen_write("\n");
     screen_write("Welcome to Wittche OS!\n");
@@ -73,7 +71,7 @@ static void cmd_clear(void) {
  */
 static void cmd_about(void) {
     screen_write("\n");
-    screen_write_color("Wittche Operating System v0.3\n", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
+    screen_write_color("Wittche Operating System v0.4\n", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
     screen_write_color("===============================\n", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
     screen_write("\n");
     screen_write("A simple x86 operating system for educational purposes.\n\n");
@@ -81,6 +79,7 @@ static void cmd_about(void) {
     screen_write_color("Features:\n", MAKE_COLOR(COLOR_GREEN, COLOR_BLACK));
     screen_write("  - 32-bit protected mode kernel\n");
     screen_write("  - Hardware interrupt handling (IDT)\n");
+    screen_write("  - Programmable Interval Timer (PIT)\n");
     screen_write("  - PS/2 keyboard driver\n");
     screen_write("  - VGA text mode with hardware cursor\n");
     screen_write("  - Proper screen scrolling\n");
@@ -96,6 +95,9 @@ static void cmd_about(void) {
     screen_write_hex(0xB8000);
     screen_write("\n");
     screen_write("  Screen Size:    80x25 characters\n");
+    screen_write("  Timer Freq:     ");
+    screen_write_dec(TIMER_FREQUENCY);
+    screen_write(" Hz\n");
     screen_write("\n");
 }
 
@@ -146,11 +148,26 @@ static void cmd_color(void) {
  * Uptime command
  */
 static void cmd_uptime(void) {
+    char uptime_buffer[16];
+    uint32_t ticks = timer_get_ticks();
+    uint32_t seconds = timer_get_seconds();
+
     screen_write("\n");
-    screen_write("System uptime: ");
-    screen_write_dec(system_uptime);
-    screen_write(" ticks");
-    screen_write_color(" (Timer not implemented yet)", MAKE_COLOR(COLOR_DARK_GREY, COLOR_BLACK));
+    screen_write_color("System Uptime:\n", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
+    screen_write("  Time:        ");
+    timer_format_uptime(uptime_buffer);
+    screen_write_color(uptime_buffer, MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
+    screen_write("\n");
+
+    screen_write("  Seconds:     ");
+    screen_write_dec(seconds);
+    screen_write(" s\n");
+
+    screen_write("  Ticks:       ");
+    screen_write_dec(ticks);
+    screen_write(" (");
+    screen_write_dec(TIMER_FREQUENCY);
+    screen_write(" Hz)\n");
     screen_write("\n");
 }
 
