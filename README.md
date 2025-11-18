@@ -19,6 +19,8 @@
 
 Wittche OS is an educational operating system designed to help developers learn operating system concepts from the ground up. Written in C and Assembly, it features a clean, well-documented codebase perfect for understanding how operating systems work.
 
+This project was developed by artificial intelligence without knowing any code.
+
 **Perfect for:**
 - 🎓 Students learning OS development
 - 💻 Developers wanting to understand low-level programming
