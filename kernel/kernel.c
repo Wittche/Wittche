@@ -251,6 +251,39 @@ void test_syscall(void) {
 }
 
 /**
+ * User Mode Test Process - runs in Ring 3
+ */
+void test_usermode(void) {
+    // This function runs in Ring 3 (user mode)!
+    const char *msg = "[User Mode Test] Hello from Ring 3 (User Mode)!\n";
+    write(1, msg, strlen(msg));
+
+    // Test getpid syscall from user mode
+    int my_pid = getpid();
+    char msg2[64];
+    strcpy(msg2, "[User Mode Test] My PID from user mode: ");
+    char pid_str[12];
+    itoa(my_pid, pid_str, 10);
+    strcat(msg2, pid_str);
+    strcat(msg2, "\n");
+    write(1, msg2, strlen(msg2));
+
+    // Test sleep syscall from user mode
+    const char *msg3 = "[User Mode Test] Sleeping for 1000ms in user mode...\n";
+    write(1, msg3, strlen(msg3));
+    sleep_ms(1000);
+
+    const char *msg4 = "[User Mode Test] Woke up! All syscalls working from Ring 3!\n";
+    write(1, msg4, strlen(msg4));
+
+    // Exit using syscall
+    const char *msg5 = "[User Mode Test] Exiting user mode process...\n";
+    write(1, msg5, strlen(msg5));
+
+    exit(0);
+}
+
+/**
  * Main kernel entry point
  * Called from kernel_entry.asm after bootloader hands control
  */

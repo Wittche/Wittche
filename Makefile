@@ -33,6 +33,7 @@ OBJS = $(BUILD_DIR)/kernel_entry.o \
        $(BUILD_DIR)/paging.o \
        $(BUILD_DIR)/process.o \
        $(BUILD_DIR)/switch.o \
+       $(BUILD_DIR)/usermode_asm.o \
        $(BUILD_DIR)/keyboard.o \
        $(BUILD_DIR)/timer.o \
        $(BUILD_DIR)/kprintf.o \
@@ -72,6 +73,10 @@ $(BUILD_DIR)/gdt_asm.o: $(KERNEL_DIR)/gdt.asm | $(BUILD_DIR)
 
 # Special rule for syscall.asm -> syscall_asm.o
 $(BUILD_DIR)/syscall_asm.o: $(KERNEL_DIR)/syscall.asm | $(BUILD_DIR)
+	$(ASM) $(ASM_FLAGS) $< -o $@
+
+# Special rule for usermode.asm -> usermode_asm.o
+$(BUILD_DIR)/usermode_asm.o: $(KERNEL_DIR)/usermode.asm | $(BUILD_DIR)
 	$(ASM) $(ASM_FLAGS) $< -o $@
 
 # Link kernel

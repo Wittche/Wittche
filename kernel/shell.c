@@ -18,6 +18,7 @@ extern void test_process_sleep(void);
 extern void ipc_producer(void);
 extern void ipc_consumer(void);
 extern void test_syscall(void);
+extern void test_usermode(void);
 
 // Command history
 #define MAX_HISTORY 10
@@ -43,6 +44,7 @@ static const char *available_commands[] = {
     "kill",
     "ipctest",
     "syscalltest",
+    "usermodetest",
     "echo",
     "color",
     "uptime",
@@ -109,6 +111,8 @@ static void cmd_help(void) {
     screen_write("   - Test Inter-Process Communication\n");
     screen_write_color("  syscalltest", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
     screen_write(" - Test system calls (INT 0x80)\n");
+    screen_write_color("  usermodetest", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
+    screen_write(" - Test user mode (Ring 3)\n");
     screen_write_color("  echo", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
     screen_write("      - Echo a message\n");
     screen_write_color("  color", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
@@ -852,6 +856,36 @@ static void cmd_syscalltest(void) {
 }
 
 /**
+ * usermodetest command - test user mode (Ring 3)
+ * Creates a process that runs in Ring 3 with privilege separation
+ */
+static void cmd_usermodetest(void) {
+    kprintf("\n");
+    kprintf_color(MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK), "User Mode (Ring 3) Test\n");
+    kprintf_color(MAKE_COLOR(COLOR_CYAN, COLOR_BLACK), "=======================\n");
+    kprintf("Spawning a process in user mode (Ring 3)...\n\n");
+
+    // Create user mode process
+    pid_t pid = process_create_user_mode("UserModeTest", test_usermode, 4096, 10);
+    if (pid > 0) {
+        kprintf_color(MAKE_COLOR(COLOR_GREEN, COLOR_BLACK),
+                     "Created User Mode Process (PID %d, Ring 3)\n", pid);
+        kprintf("\nThis process runs in Ring 3 with:");
+        kprintf("\n1. User code segment (CS = 0x1B)\n");
+        kprintf("2. User data segment (DS = 0x23)\n");
+        kprintf("3. User stack (separate from kernel stack)\n");
+        kprintf("4. Syscalls via INT 0x80 for kernel services\n");
+        kprintf("5. Privilege level 3 (non-privileged)\n\n");
+        kprintf("Watch it execute syscalls from user mode!\n");
+    } else {
+        kprintf_color(MAKE_COLOR(COLOR_RED, COLOR_BLACK),
+                     "Failed to create user mode process\n");
+    }
+
+    kprintf("\n");
+}
+
+/**
  * Add command to history
  */
 static void shell_add_history(const char *command) {
@@ -940,6 +974,8 @@ void shell_process_command(char *command) {
         cmd_ipctest();
     } else if (strcmp(cmd, "syscalltest") == 0) {
         cmd_syscalltest();
+    } else if (strcmp(cmd, "usermodetest") == 0) {
+        cmd_usermodetest();
     } else if (strcmp(cmd, "echo") == 0) {
         cmd_echo(full_args);
     } else if (strcmp(cmd, "color") == 0) {

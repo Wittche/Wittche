@@ -5,6 +5,10 @@
 #include "../include/heap.h"
 #include "../include/string.h"
 #include "../include/timer.h"
+#include "../include/gdt.h"
+
+// External assembly function to enter user mode
+extern void enter_usermode(void (*entry_point)(void), uint32_t user_stack);
 
 // Process table
 static process_t *process_table[MAX_PROCESSES];
@@ -115,6 +119,9 @@ pid_t process_create(const char *name, void (*entry_point)(void), uint32_t stack
     process->name[31] = '\0';
     process->state = PROCESS_STATE_READY;
     process->stack_size = stack_size;
+    process->user_stack = 0;  // No user stack (kernel mode)
+    process->kernel_stack = process->stack_base + stack_size;  // Kernel stack top
+    process->is_user_mode = 0;  // Kernel mode by default
     process->priority = 5;  // Default priority
     process->time_slice = 10;  // Default time slice
     process->total_time = 0;
@@ -179,6 +186,81 @@ pid_t process_create_with_priority(const char *name, void (*entry_point)(void),
             proc->priority = priority > 255 ? 255 : priority;  // Clamp to 0-255
         }
     }
+    return pid;
+}
+
+/**
+ * User mode entry wrapper
+ * This wrapper calls enter_usermode to switch to Ring 3
+ */
+static void user_mode_entry_wrapper(void) {
+    // Get current process
+    process_t *proc = current_process;
+    if (!proc || !proc->is_user_mode) {
+        kprintf_color(MAKE_COLOR(COLOR_RED, COLOR_BLACK),
+                     "[PROCESS ERROR] Invalid user mode process\n");
+        process_exit();
+        return;
+    }
+
+    // Get entry point from CPU state
+    void (*entry_point)(void) = (void (*)(void))proc->cpu_state.eip;
+    uint32_t user_stack = proc->user_stack;
+
+    // Jump to Ring 3
+    enter_usermode(entry_point, user_stack);
+
+    // Should never reach here
+    process_exit();
+}
+
+/**
+ * Create a new user mode process (Ring 3)
+ */
+pid_t process_create_user_mode(const char *name, void (*entry_point)(void),
+                               uint32_t stack_size, uint32_t priority) {
+    // Create process normally
+    pid_t pid = process_create(name, user_mode_entry_wrapper, stack_size);
+    if (pid == 0) {
+        return 0;  // Failed to create
+    }
+
+    // Get the created process
+    process_t *proc = process_get(pid);
+    if (!proc) {
+        return 0;
+    }
+
+    // Allocate user mode stack
+    proc->user_stack = (uint32_t)kmalloc(stack_size);
+    if (!proc->user_stack) {
+        kprintf_color(MAKE_COLOR(COLOR_RED, COLOR_BLACK),
+                     "[PROCESS ERROR] Failed to allocate user stack\n");
+        process_kill(pid);
+        return 0;
+    }
+
+    // Set user stack top
+    proc->user_stack += stack_size;
+
+    // Mark as user mode process
+    proc->is_user_mode = 1;
+
+    // Set priority
+    proc->priority = priority > 255 ? 255 : priority;
+
+    // Store real entry point in CPU state
+    proc->cpu_state.eip = (uint32_t)entry_point;
+
+    // Update segments for user mode
+    proc->cpu_state.cs = 0x1B;  // User code segment (0x18 | 0x03)
+    proc->cpu_state.ds = 0x23;  // User data segment (0x20 | 0x03)
+    proc->cpu_state.es = 0x23;
+    proc->cpu_state.fs = 0x23;
+    proc->cpu_state.gs = 0x23;
+    proc->cpu_state.ss = 0x23;
+
+    kprintf("[PROCESS] Created user mode process '%s' (PID %d, Ring 3)\n", name, pid);
     return pid;
 }
 
@@ -493,6 +575,10 @@ void process_schedule(void) {
         process_t *old_process = current_process;
         current_process = next_process;
         current_process->state = PROCESS_STATE_RUNNING;
+
+        // Set TSS kernel stack for privilege level switching
+        // This is used when user mode process makes syscall
+        tss_set_kernel_stack(current_process->kernel_stack);
 
         // Perform context switch
         process_switch(old_process, current_process);

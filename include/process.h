@@ -50,8 +50,11 @@ typedef struct process {
     char name[32];              // Process name
     uint32_t state;             // Process state
     cpu_state_t cpu_state;      // Saved CPU state
-    uint32_t stack_base;        // Stack base address
+    uint32_t stack_base;        // Stack base address (kernel stack)
     uint32_t stack_size;        // Stack size
+    uint32_t user_stack;        // User mode stack top (Ring 3)
+    uint32_t kernel_stack;      // Kernel mode stack top (Ring 0)
+    uint32_t is_user_mode;      // 1 if process runs in user mode (Ring 3)
     uint32_t priority;          // Process priority (0-255, higher = more priority)
     uint32_t time_slice;        // CPU time slice
     uint32_t total_time;        // Total CPU time used
@@ -73,6 +76,10 @@ pid_t process_create(const char *name, void (*entry_point)(void), uint32_t stack
 // Create a new process with specified priority
 pid_t process_create_with_priority(const char *name, void (*entry_point)(void),
                                     uint32_t stack_size, uint32_t priority);
+
+// Create a new user mode process (Ring 3)
+pid_t process_create_user_mode(const char *name, void (*entry_point)(void),
+                               uint32_t stack_size, uint32_t priority);
 
 // Set process priority (0-255, higher = more priority)
 int process_set_priority(pid_t pid, uint32_t priority);
