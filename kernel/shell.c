@@ -13,6 +13,7 @@
 // External test processes from kernel.c
 extern void test_process_a(void);
 extern void test_process_b(void);
+extern void test_process_c(void);
 
 // Command history
 #define MAX_HISTORY 10
@@ -33,6 +34,7 @@ static const char *available_commands[] = {
     "memtest",
     "ps",
     "testproc",
+    "nice",
     "echo",
     "color",
     "uptime",
@@ -88,7 +90,9 @@ static void cmd_help(void) {
     screen_write_color("  ps", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
     screen_write("        - List running processes\n");
     screen_write_color("  testproc", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
-    screen_write("  - Spawn test processes A & B\n");
+    screen_write("  - Spawn test processes A, B, C\n");
+    screen_write_color("  nice", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
+    screen_write("      - Change process priority\n");
     screen_write_color("  echo", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
     screen_write("      - Echo a message\n");
     screen_write_color("  color", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
@@ -553,38 +557,127 @@ static void cmd_ps(void) {
 }
 
 /**
- * Spawn test processes to demonstrate multitasking
+ * Spawn test processes to demonstrate priority-based multitasking
  */
 static void cmd_testproc(void) {
     kprintf("\n");
     kprintf_color(MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK), "Spawning Test Processes\n");
     kprintf_color(MAKE_COLOR(COLOR_CYAN, COLOR_BLACK), "========================\n");
+    kprintf("Testing priority-based scheduling...\n\n");
 
-    // Create test process A
-    pid_t pid_a = process_create("TestProcA", test_process_a, 4096);
+    // Create test process A - HIGH priority (20)
+    pid_t pid_a = process_create_with_priority("TestProcA", test_process_a, 4096, 20);
     if (pid_a > 0) {
         kprintf_color(MAKE_COLOR(COLOR_GREEN, COLOR_BLACK),
-                     "Created Process A (PID %d)\n", pid_a);
+                     "Created Process A (PID %d, Priority=20 HIGH)\n", pid_a);
     } else {
         kprintf_color(MAKE_COLOR(COLOR_RED, COLOR_BLACK),
                      "Failed to create Process A\n");
     }
 
-    // Create test process B
-    pid_t pid_b = process_create("TestProcB", test_process_b, 4096);
+    // Create test process B - MEDIUM priority (10)
+    pid_t pid_b = process_create_with_priority("TestProcB", test_process_b, 4096, 10);
     if (pid_b > 0) {
         kprintf_color(MAKE_COLOR(COLOR_GREEN, COLOR_BLACK),
-                     "Created Process B (PID %d)\n", pid_b);
+                     "Created Process B (PID %d, Priority=10 MEDIUM)\n", pid_b);
     } else {
         kprintf_color(MAKE_COLOR(COLOR_RED, COLOR_BLACK),
                      "Failed to create Process B\n");
     }
 
+    // Create test process C - LOW priority (2)
+    pid_t pid_c = process_create_with_priority("TestProcC", test_process_c, 4096, 2);
+    if (pid_c > 0) {
+        kprintf_color(MAKE_COLOR(COLOR_GREEN, COLOR_BLACK),
+                     "Created Process C (PID %d, Priority=2 LOW)\n", pid_c);
+    } else {
+        kprintf_color(MAKE_COLOR(COLOR_RED, COLOR_BLACK),
+                     "Failed to create Process C\n");
+    }
+
     kprintf("\n");
     kprintf_color(MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK),
-                 "Test processes are now running!\n");
-    kprintf("You should see alternating output from Process A and B.\n");
-    kprintf("Use 'ps' command to view process status.\n");
+                 "Test processes are now running with priorities!\n");
+    kprintf("Process A (HIGH) should run most frequently.\n");
+    kprintf("Process B (MEDIUM) should run occasionally.\n");
+    kprintf("Process C (LOW) should run least often.\n");
+    kprintf("Use 'ps' command to view process priorities.\n");
+    kprintf("\n");
+}
+
+/**
+ * nice command - change process priority
+ * Usage: nice <PID> <priority>
+ */
+static void cmd_nice(const char *args) {
+    kprintf("\n");
+
+    if (!args || strlen(args) == 0) {
+        kprintf_color(MAKE_COLOR(COLOR_RED, COLOR_BLACK), "Usage: nice <PID> <priority>\n");
+        kprintf("  PID: Process ID (use 'ps' to see PIDs)\n");
+        kprintf("  Priority: 0-255 (higher = more CPU time)\n");
+        kprintf("\nExample: nice 2 50\n");
+        kprintf("\n");
+        return;
+    }
+
+    // Parse arguments
+    char args_copy[256];
+    strncpy(args_copy, args, 255);
+    args_copy[255] = '\0';
+
+    // Find first space
+    char *space = strchr(args_copy, ' ');
+    if (!space) {
+        kprintf_color(MAKE_COLOR(COLOR_RED, COLOR_BLACK),
+                     "Error: Missing priority argument\n");
+        kprintf("Usage: nice <PID> <priority>\n\n");
+        return;
+    }
+
+    *space = '\0';  // Split string
+    char *pid_str = args_copy;
+    char *priority_str = space + 1;
+
+    // Convert to integers
+    int pid = atoi(pid_str);
+    int priority = atoi(priority_str);
+
+    if (pid < 0) {
+        kprintf_color(MAKE_COLOR(COLOR_RED, COLOR_BLACK),
+                     "Error: Invalid PID\n\n");
+        return;
+    }
+
+    if (priority < 0 || priority > 255) {
+        kprintf_color(MAKE_COLOR(COLOR_RED, COLOR_BLACK),
+                     "Error: Priority must be 0-255\n\n");
+        return;
+    }
+
+    // Get process to check if it exists
+    process_t *proc = process_get(pid);
+    if (!proc) {
+        kprintf_color(MAKE_COLOR(COLOR_RED, COLOR_BLACK),
+                     "Error: Process %d not found\n", pid);
+        kprintf("Use 'ps' command to see active processes\n\n");
+        return;
+    }
+
+    uint32_t old_priority = proc->priority;
+
+    // Set new priority
+    if (process_set_priority(pid, priority) == 0) {
+        kprintf_color(MAKE_COLOR(COLOR_GREEN, COLOR_BLACK),
+                     "Priority changed successfully!\n");
+        kprintf("Process: %s (PID %d)\n", proc->name, pid);
+        kprintf("Old Priority: %d\n", old_priority);
+        kprintf("New Priority: %d\n", priority);
+    } else {
+        kprintf_color(MAKE_COLOR(COLOR_RED, COLOR_BLACK),
+                     "Error: Failed to set priority\n");
+    }
+
     kprintf("\n");
 }
 
@@ -667,6 +760,8 @@ void shell_process_command(char *command) {
         cmd_ps();
     } else if (strcmp(cmd, "testproc") == 0) {
         cmd_testproc();
+    } else if (strcmp(cmd, "nice") == 0) {
+        cmd_nice(full_args);
     } else if (strcmp(cmd, "echo") == 0) {
         cmd_echo(full_args);
     } else if (strcmp(cmd, "color") == 0) {

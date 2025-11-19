@@ -67,6 +67,31 @@ void test_process_b(void) {
 }
 
 /**
+ * Test process C - low priority background task
+ */
+void test_process_c(void) {
+    int count = 0;
+    while (count < 5) {
+        screen_write_color("[Process C - Low Priority] ", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
+        screen_write("Iteration ");
+        screen_write_dec(count);
+        screen_write("\n");
+        count++;
+
+        // Busy wait
+        for (volatile int i = 0; i < 10000000; i++);
+    }
+
+    screen_write_color("[Process C] ", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
+    screen_write("Done!\n");
+
+    // Process terminates
+    while (1) {
+        __asm__ __volatile__("hlt");
+    }
+}
+
+/**
  * Main kernel entry point
  * Called from kernel_entry.asm after bootloader hands control
  */

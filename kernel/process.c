@@ -153,6 +153,45 @@ pid_t process_create(const char *name, void (*entry_point)(void), uint32_t stack
 }
 
 /**
+ * Create a new process with specified priority
+ */
+pid_t process_create_with_priority(const char *name, void (*entry_point)(void),
+                                    uint32_t stack_size, uint32_t priority) {
+    pid_t pid = process_create(name, entry_point, stack_size);
+    if (pid > 0) {
+        process_t *proc = process_get(pid);
+        if (proc) {
+            proc->priority = priority > 255 ? 255 : priority;  // Clamp to 0-255
+        }
+    }
+    return pid;
+}
+
+/**
+ * Set process priority
+ */
+int process_set_priority(pid_t pid, uint32_t priority) {
+    process_t *proc = process_get(pid);
+    if (!proc) {
+        return -1;  // Process not found
+    }
+
+    proc->priority = priority > 255 ? 255 : priority;  // Clamp to 0-255
+    return 0;
+}
+
+/**
+ * Get process priority
+ */
+int process_get_priority(pid_t pid) {
+    process_t *proc = process_get(pid);
+    if (!proc) {
+        return -1;  // Process not found
+    }
+    return proc->priority;
+}
+
+/**
  * Kill a process
  */
 void process_kill(pid_t pid) {
@@ -209,7 +248,8 @@ process_t *process_get(pid_t pid) {
 }
 
 /**
- * Round-robin scheduler - selects next process to run
+ * Priority-based scheduler - selects highest priority ready process
+ * Priority range: 0-255 (higher value = higher priority)
  */
 void process_schedule(void) {
     if (process_count_val == 0) return;
@@ -219,25 +259,34 @@ void process_schedule(void) {
         current_process->state = PROCESS_STATE_READY;
     }
 
-    // Find next ready process (round-robin)
+    // Find highest priority ready process
     process_t *next_process = NULL;
-    int start_index = -1;
+    uint32_t highest_priority = 0;
 
-    // Find current process index
     for (int i = 0; i < MAX_PROCESSES; i++) {
-        if (process_table[i] == current_process) {
-            start_index = i;
-            break;
-        }
-    }
-
-    // Search for next ready process
-    for (int offset = 1; offset <= MAX_PROCESSES; offset++) {
-        int i = (start_index + offset) % MAX_PROCESSES;
         if (process_table[i] &&
             process_table[i]->state == PROCESS_STATE_READY) {
-            next_process = process_table[i];
-            break;
+
+            // Select process with highest priority
+            if (next_process == NULL || process_table[i]->priority > highest_priority) {
+                next_process = process_table[i];
+                highest_priority = process_table[i]->priority;
+            }
+            // If same priority, use round-robin (favor process with lower index)
+            else if (process_table[i]->priority == highest_priority) {
+                // Check if this is the "next" process after current (round-robin tie-breaker)
+                if (current_process) {
+                    for (int j = 0; j < MAX_PROCESSES; j++) {
+                        if (process_table[j] == current_process) {
+                            // Prefer process that comes after current in table
+                            if (i > j && process_table[i]->priority == highest_priority) {
+                                next_process = process_table[i];
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
         }
     }
 

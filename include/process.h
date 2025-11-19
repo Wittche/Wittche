@@ -46,8 +46,18 @@ typedef struct process {
 // Initialize process management
 void process_init(void);
 
-// Create a new process
+// Create a new process with default priority
 pid_t process_create(const char *name, void (*entry_point)(void), uint32_t stack_size);
+
+// Create a new process with specified priority
+pid_t process_create_with_priority(const char *name, void (*entry_point)(void),
+                                    uint32_t stack_size, uint32_t priority);
+
+// Set process priority (0-255, higher = more priority)
+int process_set_priority(pid_t pid, uint32_t priority);
+
+// Get process priority
+int process_get_priority(pid_t pid);
 
 // Kill a process
 void process_kill(pid_t pid);
