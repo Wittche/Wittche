@@ -365,9 +365,23 @@ void shell_process_command(char *command) {
 void shell_run(void) {
     char command_buffer[MAX_CMD_LENGTH];
 
+    screen_write_color("[DEBUG] ", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
+    screen_write("Entering shell_run() main loop\n");
+
     while (1) {
+        screen_write_color("[DEBUG] ", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
+        screen_write("Calling shell_prompt()...\n");
+
         shell_prompt();
+
+        screen_write_color("[DEBUG] ", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
+        screen_write("Prompt displayed, waiting for input...\n");
+
         keyboard_get_line(command_buffer, MAX_CMD_LENGTH);
+
+        screen_write_color("[DEBUG] ", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
+        screen_write("Got input, processing command...\n");
+
         shell_process_command(command_buffer);
     }
 }
