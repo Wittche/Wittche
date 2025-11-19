@@ -11,6 +11,7 @@
 #include "../include/pmm.h"
 #include "../include/heap.h"
 #include "../include/paging.h"
+#include "../include/process.h"
 #include "../include/keyboard.h"
 #include "../include/timer.h"
 #include "../include/shell.h"
@@ -36,6 +37,9 @@ void kernel_main(void) {
     pmm_init();     // Physical memory manager
     heap_init();    // Kernel heap
     paging_init();  // Virtual memory (enables paging)
+
+    // Initialize process management (multitasking)
+    process_init();
 
     // Initialize timer (PIT)
     timer_init();

@@ -17,9 +17,9 @@ start:
     call print_string
 
     ; Load kernel from disk
-    ; We'll load sectors 2-64 (kernel) to 0x1000:0x0000
+    ; We'll load sectors 2-80 (kernel) to 0x1000:0x0000
     mov ah, 0x02        ; BIOS read sector function
-    mov al, 64          ; Number of sectors to read (32KB)
+    mov al, 80          ; Number of sectors to read (40KB)
     mov ch, 0           ; Cylinder 0
     mov cl, 2           ; Start from sector 2 (sector 1 is boot sector)
     mov dh, 0           ; Head 0

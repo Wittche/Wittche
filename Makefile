@@ -26,6 +26,8 @@ OBJS = $(BUILD_DIR)/kernel_entry.o \
        $(BUILD_DIR)/pmm.o \
        $(BUILD_DIR)/heap.o \
        $(BUILD_DIR)/paging.o \
+       $(BUILD_DIR)/process.o \
+       $(BUILD_DIR)/switch.o \
        $(BUILD_DIR)/keyboard.o \
        $(BUILD_DIR)/timer.o \
        $(BUILD_DIR)/kprintf.o \
