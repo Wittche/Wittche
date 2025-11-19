@@ -59,7 +59,7 @@ static const char *available_commands[] = {
 void shell_display_banner(void) {
     screen_write_color("\n", DEFAULT_COLOR);
     screen_write_color("===========================================\n", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
-    screen_write_color(" Wittche Operating System v0.7\n", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
+    screen_write_color(" Wittche Operating System v0.9\n", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
     screen_write_color("===========================================\n", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
     screen_write("\n");
     screen_write("Welcome to Wittche OS!\n");
