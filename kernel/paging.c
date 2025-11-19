@@ -8,6 +8,9 @@
 // Kernel page directory (aligned to 4KB)
 static page_directory_t kernel_directory __attribute__((aligned(4096)));
 
+// Early page tables for identity mapping (16 tables for 16MB)
+static page_table_t early_page_tables[16] __attribute__((aligned(4096)));
+
 // Current page directory
 static page_directory_t *current_directory = NULL;
 
@@ -206,6 +209,12 @@ void paging_init(void) {
     // This maps virtual address = physical address
     kprintf("         Identity mapping first 16 MB...\n");
 
+    // Clear early page tables
+    memset(early_page_tables, 0, sizeof(early_page_tables));
+
+    // Page table counter
+    int pt_count = 0;
+
     for (uint32_t i = 0; i < 16 * 1024 * 1024; i += PAGE_SIZE) {
         // We need to manually create page tables since paging_map_page
         // uses pmm_alloc_page which won't work before paging is enabled
@@ -213,14 +222,9 @@ void paging_init(void) {
         uint32_t pd_index = get_page_dir_index(i);
         uint32_t pt_index = get_page_table_index(i);
 
-        // Allocate page table if needed (use static allocation)
-        static page_table_t early_page_tables[16] __attribute__((aligned(4096)));
-        static int pt_count = 0;
-
         if (!(kernel_directory.entries[pd_index] & PAGE_PRESENT)) {
             // Use pre-allocated page table
             page_table_t *pt = &early_page_tables[pt_count++];
-            memset(pt, 0, sizeof(page_table_t));
 
             kernel_directory.entries[pd_index] = make_pde((uint32_t)pt, PAGE_KERNEL);
         }
