@@ -153,11 +153,12 @@ void idt_init(void) {
     // Load the IDT
     idt_load((uint32_t)&idtp);
 
-    // Enable interrupts
-    __asm__ __volatile__("sti");
-
+    // Print messages BEFORE enabling interrupts (to avoid race conditions)
     screen_write_color("[IDT] ", MAKE_COLOR(COLOR_GREEN, COLOR_BLACK));
     screen_write("Interrupt Descriptor Table initialized\n");
     screen_write_color("[PIC] ", MAKE_COLOR(COLOR_GREEN, COLOR_BLACK));
     screen_write("Programmable Interrupt Controller configured\n");
+
+    // Enable interrupts (after all screen output is done)
+    __asm__ __volatile__("sti");
 }
