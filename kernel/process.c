@@ -4,6 +4,7 @@
 #include "../include/kprintf.h"
 #include "../include/heap.h"
 #include "../include/string.h"
+#include "../include/timer.h"
 
 // Process table
 static process_t *process_table[MAX_PROCESSES];
@@ -117,6 +118,7 @@ pid_t process_create(const char *name, void (*entry_point)(void), uint32_t stack
     process->priority = 5;  // Default priority
     process->time_slice = 10;  // Default time slice
     process->total_time = 0;
+    process->wake_time = 0;  // Not sleeping
     process->next = NULL;
 
     // Setup stack and entry point
@@ -226,6 +228,66 @@ void process_kill(pid_t pid) {
 
     kprintf_color(MAKE_COLOR(COLOR_RED, COLOR_BLACK),
                  "[PROCESS ERROR] Process PID %d not found\n", pid);
+}
+
+/**
+ * Put current process to sleep for specified milliseconds
+ */
+void process_sleep(uint32_t ms) {
+    if (!current_process) {
+        return;  // No process running
+    }
+
+    if (current_process->pid == 0) {
+        // Idle process cannot sleep
+        return;
+    }
+
+    // Calculate wake up time in ticks (1000 Hz timer = 1 tick per ms)
+    uint32_t sleep_ticks = ms;
+    current_process->wake_time = timer_get_ticks() + sleep_ticks;
+    current_process->state = PROCESS_STATE_BLOCKED;
+
+    // Immediately schedule another process
+    process_schedule();
+}
+
+/**
+ * Wake up a sleeping process
+ */
+int process_wake(pid_t pid) {
+    process_t *proc = process_get(pid);
+    if (!proc) {
+        return -1;  // Process not found
+    }
+
+    if (proc->state == PROCESS_STATE_BLOCKED) {
+        proc->state = PROCESS_STATE_READY;
+        proc->wake_time = 0;
+        return 0;  // Success
+    }
+
+    return -2;  // Process not sleeping
+}
+
+/**
+ * Check and wake up sleeping processes (called by timer every tick)
+ */
+void process_check_sleeping(void) {
+    uint32_t current_ticks = timer_get_ticks();
+
+    for (int i = 0; i < MAX_PROCESSES; i++) {
+        if (process_table[i] &&
+            process_table[i]->state == PROCESS_STATE_BLOCKED &&
+            process_table[i]->wake_time > 0) {
+
+            // Check if it's time to wake up
+            if (current_ticks >= process_table[i]->wake_time) {
+                process_table[i]->state = PROCESS_STATE_READY;
+                process_table[i]->wake_time = 0;
+            }
+        }
+    }
 }
 
 /**

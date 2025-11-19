@@ -33,9 +33,10 @@ typedef struct process {
     cpu_state_t cpu_state;      // Saved CPU state
     uint32_t stack_base;        // Stack base address
     uint32_t stack_size;        // Stack size
-    uint32_t priority;          // Process priority (0-10, higher = more priority)
+    uint32_t priority;          // Process priority (0-255, higher = more priority)
     uint32_t time_slice;        // CPU time slice
     uint32_t total_time;        // Total CPU time used
+    uint32_t wake_time;         // Wake up time in ticks (for sleeping processes)
     struct process *next;       // Next process in list
 } process_t;
 
@@ -61,6 +62,15 @@ int process_get_priority(pid_t pid);
 
 // Kill a process
 void process_kill(pid_t pid);
+
+// Put current process to sleep for specified milliseconds
+void process_sleep(uint32_t ms);
+
+// Wake up a sleeping process
+int process_wake(pid_t pid);
+
+// Check and wake up sleeping processes (called by timer)
+void process_check_sleeping(void);
 
 // Get current running process
 process_t *process_current(void);

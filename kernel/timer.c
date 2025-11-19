@@ -60,6 +60,9 @@ void timer_init(void) {
 void timer_handler(void) {
     system_ticks++;
 
+    // Check and wake up sleeping processes every tick
+    process_check_sleeping();
+
     // Call process scheduler every 10 ticks (10ms time slice)
     // This enables preemptive multitasking
     if (system_ticks % 10 == 0) {

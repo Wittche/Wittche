@@ -92,6 +92,34 @@ void test_process_c(void) {
 }
 
 /**
+ * Test process - demonstrates sleep functionality
+ */
+void test_process_sleep(void) {
+    int count = 0;
+    while (count < 5) {
+        screen_write_color("[Sleep Process] ", MAKE_COLOR(COLOR_LIGHT_MAGENTA, COLOR_BLACK));
+        screen_write("Iteration ");
+        screen_write_dec(count);
+        screen_write(" - Going to sleep for 2000ms\n");
+
+        // Sleep for 2 seconds (2000ms)
+        process_sleep(2000);
+
+        screen_write_color("[Sleep Process] ", MAKE_COLOR(COLOR_LIGHT_MAGENTA, COLOR_BLACK));
+        screen_write("Woke up from sleep!\n");
+        count++;
+    }
+
+    screen_write_color("[Sleep Process] ", MAKE_COLOR(COLOR_LIGHT_MAGENTA, COLOR_BLACK));
+    screen_write("All iterations complete!\n");
+
+    // Process terminates
+    while (1) {
+        __asm__ __volatile__("hlt");
+    }
+}
+
+/**
  * Main kernel entry point
  * Called from kernel_entry.asm after bootloader hands control
  */

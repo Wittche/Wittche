@@ -14,6 +14,7 @@
 extern void test_process_a(void);
 extern void test_process_b(void);
 extern void test_process_c(void);
+extern void test_process_sleep(void);
 
 // Command history
 #define MAX_HISTORY 10
@@ -34,6 +35,7 @@ static const char *available_commands[] = {
     "memtest",
     "ps",
     "testproc",
+    "sleeptest",
     "nice",
     "echo",
     "color",
@@ -91,6 +93,8 @@ static void cmd_help(void) {
     screen_write("        - List running processes\n");
     screen_write_color("  testproc", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
     screen_write("  - Spawn test processes A, B, C\n");
+    screen_write_color("  sleeptest", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
+    screen_write(" - Demonstrate process sleep/wake\n");
     screen_write_color("  nice", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
     screen_write("      - Change process priority\n");
     screen_write_color("  echo", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
@@ -682,6 +686,35 @@ static void cmd_nice(const char *args) {
 }
 
 /**
+ * sleeptest command - demonstrate process sleep/wake functionality
+ */
+static void cmd_sleeptest(void) {
+    kprintf("\n");
+    kprintf_color(MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK), "Sleep/Wake Test\n");
+    kprintf_color(MAKE_COLOR(COLOR_CYAN, COLOR_BLACK), "===============\n");
+    kprintf("Spawning a process that sleeps for 2 seconds between iterations...\n\n");
+
+    // Create sleep test process
+    pid_t pid = process_create_with_priority("SleepTest", test_process_sleep, 4096, 10);
+    if (pid > 0) {
+        kprintf_color(MAKE_COLOR(COLOR_GREEN, COLOR_BLACK),
+                     "Created Sleep Test Process (PID %d)\n", pid);
+        kprintf("\nWatch the process:\n");
+        kprintf("1. Print message and go to sleep\n");
+        kprintf("2. Process becomes BLOCKED for 2000ms\n");
+        kprintf("3. Automatically wakes up after 2 seconds\n");
+        kprintf("4. Print 'Woke up!' message\n");
+        kprintf("5. Repeat 5 times\n\n");
+        kprintf("Use 'ps' command while it's sleeping to see BLOCKED state!\n");
+    } else {
+        kprintf_color(MAKE_COLOR(COLOR_RED, COLOR_BLACK),
+                     "Failed to create sleep test process\n");
+    }
+
+    kprintf("\n");
+}
+
+/**
  * Add command to history
  */
 static void shell_add_history(const char *command) {
@@ -760,6 +793,8 @@ void shell_process_command(char *command) {
         cmd_ps();
     } else if (strcmp(cmd, "testproc") == 0) {
         cmd_testproc();
+    } else if (strcmp(cmd, "sleeptest") == 0) {
+        cmd_sleeptest();
     } else if (strcmp(cmd, "nice") == 0) {
         cmd_nice(full_args);
     } else if (strcmp(cmd, "echo") == 0) {
