@@ -268,7 +268,40 @@ void page_fault_handler(uint32_t error_code) {
     int reserved = (error_code & 0x8) >> 3;   // Reserved bit?
     int instr_fetch = (error_code & 0x10) >> 4; // Instruction fetch?
 
-    // Display page fault information
+    // Try demand paging for user mode processes
+    if (!present && !reserved) {
+        process_t *proc = process_current();
+
+        // Check if fault is in valid user space region
+        // Stack region: 0x80000000 - 0x10000 (stack grows down from 2GB)
+        // Heap/Data region: 0x40100000 - 0x80000000 (after code)
+        uint32_t stack_limit = USER_STACK_BASE - (1024 * 1024);  // 1MB stack max
+        int is_stack = (faulting_address >= stack_limit && faulting_address < USER_STACK_BASE);
+        int is_heap = (faulting_address >= (USER_CODE_BASE + (256 * 1024)) &&
+                       faulting_address < USER_STACK_BASE);
+
+        if (proc && proc->is_user_mode && (is_stack || is_heap)) {
+            // Allocate new page for demand paging
+            uint32_t page_physical = pmm_alloc_page();
+            if (page_physical) {
+                // Align fault address to page boundary
+                uint32_t page_addr = faulting_address & 0xFFFFF000;
+
+                // Map page to user process
+                paging_map_user_code(proc->page_directory, page_addr,
+                                    page_physical, PAGE_SIZE);
+
+                kprintf_color(MAKE_COLOR(COLOR_GREEN, COLOR_BLACK),
+                            "[DEMAND PAGING] Allocated page at 0x%x (phys: 0x%x)\n",
+                            page_addr, page_physical);
+
+                // Return and retry the faulting instruction
+                return;
+            }
+        }
+    }
+
+    // Display page fault information if demand paging didn't handle it
     screen_write_color("\n\n=== PAGE FAULT ===\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
 
     kprintf_color(MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK), "Fault Address: 0x%x\n", faulting_address);
