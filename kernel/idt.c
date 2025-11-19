@@ -67,9 +67,10 @@ void pic_remap(void) {
     outb(PIC2_DATA, 0x01);
     io_wait();
 
-    // Restore masks
-    outb(PIC1_DATA, mask1);
-    outb(PIC2_DATA, mask2);
+    // Set interrupt masks: Enable only timer (IRQ0) and keyboard (IRQ1)
+    // Mask format: bit 0 = IRQ0, bit 1 = IRQ1, etc. (1 = masked/disabled, 0 = enabled)
+    outb(PIC1_DATA, 0xFC);  // 11111100 - Enable IRQ0 (timer) and IRQ1 (keyboard)
+    outb(PIC2_DATA, 0xFF);  // 11111111 - Mask all slave PIC interrupts
 }
 
 // Send End of Interrupt signal to PIC

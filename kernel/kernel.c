@@ -35,8 +35,16 @@ void kernel_main(void) {
     // Initialize keyboard driver
     keyboard_init();
 
+    // Debug: Check if we reach here
+    screen_write_color("[DEBUG] ", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
+    screen_write("About to display banner...\n");
+
     // Display welcome banner
     shell_display_banner();
+
+    // Debug: Check if banner displayed
+    screen_write_color("[DEBUG] ", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
+    screen_write("Banner displayed, starting shell...\n");
 
     // Start the shell (never returns)
     shell_run();
