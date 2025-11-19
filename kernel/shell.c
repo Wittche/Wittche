@@ -8,6 +8,11 @@
 #include "../include/pmm.h"
 #include "../include/heap.h"
 #include "../include/paging.h"
+#include "../include/process.h"
+
+// External test processes from kernel.c
+extern void test_process_a(void);
+extern void test_process_b(void);
 
 // Command history
 #define MAX_HISTORY 10
@@ -26,6 +31,8 @@ static const char *available_commands[] = {
     "mem",
     "meminfo",
     "memtest",
+    "ps",
+    "testproc",
     "echo",
     "color",
     "uptime",
@@ -40,7 +47,7 @@ static const char *available_commands[] = {
 void shell_display_banner(void) {
     screen_write_color("\n", DEFAULT_COLOR);
     screen_write_color("===========================================\n", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
-    screen_write_color(" Wittche Operating System v0.6\n", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
+    screen_write_color(" Wittche Operating System v0.7\n", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
     screen_write_color("===========================================\n", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
     screen_write("\n");
     screen_write("Welcome to Wittche OS!\n");
@@ -78,6 +85,10 @@ static void cmd_help(void) {
     screen_write("   - Detailed memory statistics\n");
     screen_write_color("  memtest", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
     screen_write("   - Test PMM and heap allocation\n");
+    screen_write_color("  ps", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
+    screen_write("        - List running processes\n");
+    screen_write_color("  testproc", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
+    screen_write("  - Spawn test processes A & B\n");
     screen_write_color("  echo", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
     screen_write("      - Echo a message\n");
     screen_write_color("  color", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
@@ -103,7 +114,7 @@ static void cmd_clear(void) {
  */
 static void cmd_about(void) {
     screen_write("\n");
-    screen_write_color("Wittche Operating System v0.6\n", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
+    screen_write_color("Wittche Operating System v0.7\n", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
     screen_write_color("===============================\n", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
     screen_write("\n");
     screen_write("A simple x86 operating system for educational purposes.\n\n");
@@ -114,6 +125,9 @@ static void cmd_about(void) {
     screen_write("  - Physical Memory Manager (PMM) with bitmap allocator\n");
     screen_write("  - Kernel heap (kmalloc/kfree) with 4MB size\n");
     screen_write("  - Paging (virtual memory) with identity mapping\n");
+    screen_write("  - Process management with PCB and multitasking\n");
+    screen_write("  - Preemptive round-robin scheduler\n");
+    screen_write("  - Context switching with full state save/restore\n");
     screen_write("  - Programmable Interval Timer (PIT)\n");
     screen_write("  - PS/2 keyboard driver with arrow key support\n");
     screen_write("  - VGA text mode with hardware cursor\n");
@@ -244,9 +258,9 @@ static void cmd_ver(void) {
     kprintf_color(MAKE_COLOR(COLOR_CYAN, COLOR_BLACK), "==============================\n");
     kprintf("\n");
     kprintf("  Version:     ");
-    kprintf_color(MAKE_COLOR(COLOR_CYAN, COLOR_BLACK), "0.6.0\n");
+    kprintf_color(MAKE_COLOR(COLOR_CYAN, COLOR_BLACK), "0.7.0\n");
     kprintf("  Codename:    ");
-    kprintf_color(MAKE_COLOR(COLOR_CYAN, COLOR_BLACK), "Memory Manager\n");
+    kprintf_color(MAKE_COLOR(COLOR_CYAN, COLOR_BLACK), "Process Manager\n");
     kprintf("  Build Date:  ");
     kprintf_color(MAKE_COLOR(COLOR_CYAN, COLOR_BLACK), "2024-11\n");
     kprintf("  Arch:        ");
@@ -461,6 +475,120 @@ static void cmd_memtest(void) {
 }
 
 /**
+ * ps command - list running processes
+ */
+static void cmd_ps(void) {
+    kprintf("\n");
+    kprintf_color(MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK), "Process List\n");
+    kprintf_color(MAKE_COLOR(COLOR_CYAN, COLOR_BLACK), "============\n");
+    kprintf("\n");
+
+    // Get process table
+    process_t **proc_table = process_get_table();
+    process_t *current = process_current();
+    int count = 0;
+
+    // Header
+    kprintf_color(MAKE_COLOR(COLOR_GREEN, COLOR_BLACK),
+                 "PID  NAME                 STATE      PRIORITY  TIME(ms)\n");
+    kprintf("---  -------------------  ---------  --------  --------\n");
+
+    // List all processes
+    for (int i = 0; i < MAX_PROCESSES; i++) {
+        if (proc_table[i]) {
+            process_t *p = proc_table[i];
+
+            // Print with color for current process
+            if (p == current) {
+                kprintf_color(MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK), "%-4d ", p->pid);
+            } else {
+                kprintf("%-4d ", p->pid);
+            }
+
+            // Name
+            kprintf("%-20s ", p->name);
+
+            // State
+            const char *state_str;
+            uint8_t state_color;
+            switch (p->state) {
+                case PROCESS_STATE_READY:
+                    state_str = "READY";
+                    state_color = MAKE_COLOR(COLOR_CYAN, COLOR_BLACK);
+                    break;
+                case PROCESS_STATE_RUNNING:
+                    state_str = "RUNNING";
+                    state_color = MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK);
+                    break;
+                case PROCESS_STATE_BLOCKED:
+                    state_str = "BLOCKED";
+                    state_color = MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK);
+                    break;
+                case PROCESS_STATE_TERMINATED:
+                    state_str = "TERM";
+                    state_color = MAKE_COLOR(COLOR_RED, COLOR_BLACK);
+                    break;
+                default:
+                    state_str = "UNKNOWN";
+                    state_color = MAKE_COLOR(COLOR_DARK_GREY, COLOR_BLACK);
+            }
+            kprintf_color(state_color, "%-9s  ", state_str);
+
+            // Priority and time
+            kprintf("%-8d  %-8d\n", p->priority, p->total_time);
+            count++;
+        }
+    }
+
+    kprintf("\n");
+    kprintf("Total processes: %d\n", count);
+    kprintf("Current process: ");
+    if (current) {
+        kprintf_color(MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK),
+                     "%s (PID %d)\n", current->name, current->pid);
+    } else {
+        kprintf("None\n");
+    }
+    kprintf("\n");
+}
+
+/**
+ * Spawn test processes to demonstrate multitasking
+ */
+static void cmd_testproc(void) {
+    kprintf("\n");
+    kprintf_color(MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK), "Spawning Test Processes\n");
+    kprintf_color(MAKE_COLOR(COLOR_CYAN, COLOR_BLACK), "========================\n");
+
+    // Create test process A
+    pid_t pid_a = process_create("TestProcA", test_process_a, 4096);
+    if (pid_a > 0) {
+        kprintf_color(MAKE_COLOR(COLOR_GREEN, COLOR_BLACK),
+                     "Created Process A (PID %d)\n", pid_a);
+    } else {
+        kprintf_color(MAKE_COLOR(COLOR_RED, COLOR_BLACK),
+                     "Failed to create Process A\n");
+    }
+
+    // Create test process B
+    pid_t pid_b = process_create("TestProcB", test_process_b, 4096);
+    if (pid_b > 0) {
+        kprintf_color(MAKE_COLOR(COLOR_GREEN, COLOR_BLACK),
+                     "Created Process B (PID %d)\n", pid_b);
+    } else {
+        kprintf_color(MAKE_COLOR(COLOR_RED, COLOR_BLACK),
+                     "Failed to create Process B\n");
+    }
+
+    kprintf("\n");
+    kprintf_color(MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK),
+                 "Test processes are now running!\n");
+    kprintf("You should see alternating output from Process A and B.\n");
+    kprintf("Use 'ps' command to view process status.\n");
+    kprintf("\n");
+}
+
+/**
  * Add command to history
  */
 static void shell_add_history(const char *command) {
@@ -535,6 +663,10 @@ void shell_process_command(char *command) {
         cmd_meminfo();
     } else if (strcmp(cmd, "memtest") == 0) {
         cmd_memtest();
+    } else if (strcmp(cmd, "ps") == 0) {
+        cmd_ps();
+    } else if (strcmp(cmd, "testproc") == 0) {
+        cmd_testproc();
     } else if (strcmp(cmd, "echo") == 0) {
         cmd_echo(full_args);
     } else if (strcmp(cmd, "color") == 0) {
