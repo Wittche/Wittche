@@ -37,6 +37,7 @@ static const char *available_commands[] = {
     "testproc",
     "sleeptest",
     "nice",
+    "kill",
     "echo",
     "color",
     "uptime",
@@ -97,6 +98,8 @@ static void cmd_help(void) {
     screen_write(" - Demonstrate process sleep/wake\n");
     screen_write_color("  nice", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
     screen_write("      - Change process priority\n");
+    screen_write_color("  kill", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
+    screen_write("      - Terminate a process\n");
     screen_write_color("  echo", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
     screen_write("      - Echo a message\n");
     screen_write_color("  color", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
@@ -715,6 +718,60 @@ static void cmd_sleeptest(void) {
 }
 
 /**
+ * kill command - terminate a process
+ * Usage: kill <PID>
+ */
+static void cmd_kill(const char *args) {
+    kprintf("\n");
+
+    if (!args || strlen(args) == 0) {
+        kprintf_color(MAKE_COLOR(COLOR_RED, COLOR_BLACK), "Usage: kill <PID>\n");
+        kprintf("  PID: Process ID (use 'ps' to see PIDs)\n");
+        kprintf("\nExample: kill 2\n");
+        kprintf("\nWarning: Cannot kill idle process (PID 0)\n");
+        kprintf("\n");
+        return;
+    }
+
+    // Convert to integer
+    int pid = atoi(args);
+
+    if (pid < 0) {
+        kprintf_color(MAKE_COLOR(COLOR_RED, COLOR_BLACK),
+                     "Error: Invalid PID\n\n");
+        return;
+    }
+
+    if (pid == 0) {
+        kprintf_color(MAKE_COLOR(COLOR_RED, COLOR_BLACK),
+                     "Error: Cannot kill idle process (PID 0)\n\n");
+        return;
+    }
+
+    // Check if process exists
+    process_t *proc = process_get(pid);
+    if (!proc) {
+        kprintf_color(MAKE_COLOR(COLOR_RED, COLOR_BLACK),
+                     "Error: Process %d not found\n", pid);
+        kprintf("Use 'ps' command to see active processes\n\n");
+        return;
+    }
+
+    // Get process info before killing
+    char name[32];
+    strncpy(name, proc->name, 31);
+    name[31] = '\0';
+
+    // Kill the process
+    kprintf("Terminating process: %s (PID %d)\n", name, pid);
+    process_kill(pid);
+    kprintf_color(MAKE_COLOR(COLOR_GREEN, COLOR_BLACK),
+                 "Process %d terminated successfully\n", pid);
+
+    kprintf("\n");
+}
+
+/**
  * Add command to history
  */
 static void shell_add_history(const char *command) {
@@ -797,6 +854,8 @@ void shell_process_command(char *command) {
         cmd_sleeptest();
     } else if (strcmp(cmd, "nice") == 0) {
         cmd_nice(full_args);
+    } else if (strcmp(cmd, "kill") == 0) {
+        cmd_kill(full_args);
     } else if (strcmp(cmd, "echo") == 0) {
         cmd_echo(full_args);
     } else if (strcmp(cmd, "color") == 0) {
