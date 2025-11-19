@@ -4,6 +4,7 @@
 #include "../include/screen.h"
 #include "../include/string.h"
 #include "../include/types.h"
+#include "../include/process.h"
 
 // PIT (Programmable Interval Timer) I/O ports
 #define PIT_CHANNEL0 0x40   // Channel 0 data port (IRQ0)
@@ -59,13 +60,11 @@ void timer_init(void) {
 void timer_handler(void) {
     system_ticks++;
 
-    // Optional: Display a spinner or update status every second
-    // Uncomment for debugging:
-    /*
-    if (system_ticks % TIMER_FREQUENCY == 0) {
-        screen_write(".");
+    // Call process scheduler every 10 ticks (10ms time slice)
+    // This enables preemptive multitasking
+    if (system_ticks % 10 == 0) {
+        process_schedule();
     }
-    */
 }
 
 /**

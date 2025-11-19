@@ -18,45 +18,47 @@ process_switch:
     jz .load_new
 
     ; Save registers to old process CPU state
-    ; Offset in cpu_state_t structure:
-    ; +36 = eax, +40 = ebx, +44 = ecx, +48 = edx
-    ; +52 = esi, +56 = edi, +60 = esp, +64 = ebp
-    ; +68 = eip, +72 = eflags
+    ; PCB structure: pid(4) + name(32) + state(4) = 40 bytes before cpu_state
+    ; cpu_state_t: eax(4), ebx(4), ecx(4), edx(4), esi(4), edi(4), esp(4), ebp(4),
+    ;              eip(4), eflags(4), cr3(4), cs(2), ds(2), es(2), fs(2), gs(2), ss(2)
+    ; Offsets from process base:
+    ; eax=40, ebx=44, ecx=48, edx=52, esi=56, edi=60, esp=64, ebp=68,
+    ; eip=72, eflags=76, cr3=80, cs=84, ds=86, es=88, fs=90, gs=92, ss=94
 
     ; Save general purpose registers
-    mov [eax + 40], ebx
-    mov [eax + 44], ecx
-    mov [eax + 52], esi
-    mov [eax + 56], edi
+    mov [eax + 44], ebx
+    mov [eax + 48], ecx
+    mov [eax + 56], esi
+    mov [eax + 60], edi
 
     ; Save stack pointer (before this function call)
     mov ecx, esp
     add ecx, 4          ; Account for return address
-    mov [eax + 60], ecx
+    mov [eax + 64], ecx
 
     ; Save base pointer
-    mov [eax + 64], ebp
+    mov [eax + 68], ebp
 
     ; Save return address as EIP
     mov ecx, [esp]      ; Return address
-    mov [eax + 68], ecx
+    mov [eax + 72], ecx
 
     ; Save flags
     pushfd
     pop ecx
-    mov [eax + 72], ecx
+    mov [eax + 76], ecx
 
     ; Save segment registers
     mov cx, ds
-    mov [eax + 80], cx  ; ds at offset 80
+    mov [eax + 86], cx  ; ds
     mov cx, es
-    mov [eax + 82], cx  ; es at offset 82
+    mov [eax + 88], cx  ; es
     mov cx, fs
-    mov [eax + 84], cx  ; fs at offset 84
+    mov [eax + 90], cx  ; fs
     mov cx, gs
-    mov [eax + 86], cx  ; gs at offset 86
+    mov [eax + 92], cx  ; gs
     mov cx, ss
-    mov [eax + 88], cx  ; ss at offset 88
+    mov [eax + 94], cx  ; ss
 
 .load_new:
     ; Load new process state
@@ -64,38 +66,38 @@ process_switch:
     jz .done
 
     ; Load segment registers
-    mov cx, [edx + 80]  ; ds
+    mov cx, [edx + 86]  ; ds
     mov ds, cx
-    mov cx, [edx + 82]  ; es
+    mov cx, [edx + 88]  ; es
     mov es, cx
-    mov cx, [edx + 84]  ; fs
+    mov cx, [edx + 90]  ; fs
     mov fs, cx
-    mov cx, [edx + 86]  ; gs
+    mov cx, [edx + 92]  ; gs
     mov gs, cx
-    mov cx, [edx + 88]  ; ss
+    mov cx, [edx + 94]  ; ss
     mov ss, cx
 
     ; Load stack pointer and base pointer
-    mov esp, [edx + 60]
-    mov ebp, [edx + 64]
+    mov esp, [edx + 64]
+    mov ebp, [edx + 68]
 
     ; Load flags
-    mov ecx, [edx + 72]
+    mov ecx, [edx + 76]
     push ecx
     popfd
 
     ; Load general purpose registers
-    mov ebx, [edx + 40]
-    mov esi, [edx + 52]
-    mov edi, [edx + 56]
-    mov ecx, [edx + 44]
+    mov ebx, [edx + 44]
+    mov esi, [edx + 56]
+    mov edi, [edx + 60]
+    mov ecx, [edx + 48]
 
     ; Load EIP (return address)
-    mov eax, [edx + 68]
+    mov eax, [edx + 72]
     push eax
 
     ; Load EDX last
-    mov edx, [edx + 48]
+    mov edx, [edx + 52]
 
 .done:
     ret

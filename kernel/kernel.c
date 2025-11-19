@@ -17,6 +17,56 @@
 #include "../include/shell.h"
 
 /**
+ * Test process A - prints message periodically
+ */
+void test_process_a(void) {
+    int count = 0;
+    while (count < 5) {
+        screen_write_color("[Process A] ", MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
+        screen_write("Running iteration ");
+        screen_write_dec(count);
+        screen_write("\n");
+        count++;
+
+        // Busy wait
+        for (volatile int i = 0; i < 10000000; i++);
+    }
+
+    screen_write_color("[Process A] ", MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
+    screen_write("Finished!\n");
+
+    // Process terminates
+    while (1) {
+        __asm__ __volatile__("hlt");
+    }
+}
+
+/**
+ * Test process B - prints different message
+ */
+void test_process_b(void) {
+    int count = 0;
+    while (count < 5) {
+        screen_write_color("[Process B] ", MAKE_COLOR(COLOR_LIGHT_BLUE, COLOR_BLACK));
+        screen_write("Executing iteration ");
+        screen_write_dec(count);
+        screen_write("\n");
+        count++;
+
+        // Busy wait
+        for (volatile int i = 0; i < 10000000; i++);
+    }
+
+    screen_write_color("[Process B] ", MAKE_COLOR(COLOR_LIGHT_BLUE, COLOR_BLACK));
+    screen_write("Completed!\n");
+
+    // Process terminates
+    while (1) {
+        __asm__ __volatile__("hlt");
+    }
+}
+
+/**
  * Main kernel entry point
  * Called from kernel_entry.asm after bootloader hands control
  */
