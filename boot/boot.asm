@@ -108,7 +108,17 @@ protected_mode:
     mov ss, ax
     mov esp, 0x90000    ; Set up stack
 
-    ; Jump to kernel (no debug output - kernel will handle all display)
+    ; Clear VGA text buffer completely (0xB8000 - 0xB8FA0)
+    ; This removes all BIOS messages and ensures clean start
+    mov edi, 0xB8000    ; VGA text buffer start
+    mov ecx, 2000       ; 80x25 = 2000 characters
+    mov ax, 0x0F20      ; White on black space (0x0F = color, 0x20 = space)
+.clear_loop:
+    mov [edi], ax       ; Write space with color
+    add edi, 2          ; Move to next character (2 bytes per char)
+    loop .clear_loop    ; Repeat until ecx = 0
+
+    ; Jump to kernel (VGA is now clean)
     call 0x10000        ; Call kernel (will return here if kernel returns)
 
     ; If we get here, kernel returned - hang

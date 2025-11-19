@@ -25,10 +25,20 @@ static uint16_t *video_memory = (uint16_t *)VIDEO_MEMORY;
  * Initialize the screen driver
  */
 void screen_init(void) {
+    // Set initial state
     cursor_row = 0;
     cursor_col = 0;
     current_color = DEFAULT_COLOR;
-    screen_clear();
+
+    // Clear entire screen with spaces
+    uint16_t blank = (DEFAULT_COLOR << 8) | ' ';
+    for (int i = 0; i < SCREEN_WIDTH * SCREEN_HEIGHT; i++) {
+        video_memory[i] = blank;
+    }
+
+    // Reset cursor to top-left
+    cursor_row = 0;
+    cursor_col = 0;
     screen_update_cursor();
 }
 
