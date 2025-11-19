@@ -7,6 +7,7 @@
 #include "../include/timer.h"
 #include "../include/gdt.h"
 #include "../include/paging.h"
+#include "../include/pmm.h"
 
 // External assembly function to enter user mode
 extern void enter_usermode(void (*entry_point)(void), uint32_t user_stack);
@@ -241,17 +242,14 @@ pid_t process_create_user_mode(const char *name, void (*entry_point)(void),
         return 0;
     }
 
-    // Allocate user mode stack
-    proc->user_stack = (uint32_t)kmalloc(stack_size);
-    if (!proc->user_stack) {
+    // Allocate physical memory for user stack
+    uint32_t stack_physical = pmm_alloc_page();  // Allocate at least one page
+    if (!stack_physical) {
         kprintf_color(MAKE_COLOR(COLOR_RED, COLOR_BLACK),
-                     "[PROCESS ERROR] Failed to allocate user stack\n");
+                     "[PROCESS ERROR] Failed to allocate user stack page\n");
         process_kill(pid);
         return 0;
     }
-
-    // Set user stack top
-    proc->user_stack += stack_size;
 
     // Create separate page directory for user process
     proc->page_directory = paging_create_user_directory();
@@ -262,14 +260,40 @@ pid_t process_create_user_mode(const char *name, void (*entry_point)(void),
         return 0;
     }
 
+    // Allocate physical memory for user code (4KB = 1 page)
+    uint32_t code_physical = pmm_alloc_page();
+    if (!code_physical) {
+        kprintf_color(MAKE_COLOR(COLOR_RED, COLOR_BLACK),
+                     "[PROCESS ERROR] Failed to allocate user code page\n");
+        process_kill(pid);
+        return 0;
+    }
+
+    // Copy entry point code to allocated page
+    // We'll copy 4KB (assuming code is smaller than 1 page)
+    memcpy((void *)code_physical, (void *)entry_point, PAGE_SIZE);
+
+    // Map user code to virtual address (USER_CODE_BASE = 0x40000000)
+    paging_map_user_code(proc->page_directory, USER_CODE_BASE, code_physical, PAGE_SIZE);
+
+    // Map user stack to virtual address (USER_STACK_BASE = 0x80000000)
+    // Stack grows down, so we map at the base
+    paging_map_user_code(proc->page_directory, USER_STACK_BASE - PAGE_SIZE, stack_physical, PAGE_SIZE);
+
+    // Set user stack top (stack grows down from USER_STACK_BASE)
+    proc->user_stack = USER_STACK_BASE;
+
+    kprintf("[USERMODE] Mapped user code: virt=0x%x, phys=0x%x\n", USER_CODE_BASE, code_physical);
+    kprintf("[USERMODE] Mapped user stack: virt=0x%x, phys=0x%x\n", USER_STACK_BASE - PAGE_SIZE, stack_physical);
+
     // Mark as user mode process
     proc->is_user_mode = 1;
 
     // Set priority
     proc->priority = priority > 255 ? 255 : priority;
 
-    // Store real entry point in CPU state
-    proc->cpu_state.eip = (uint32_t)entry_point;
+    // Set entry point to user virtual address
+    proc->cpu_state.eip = USER_CODE_BASE;
 
     // Update segments for user mode
     proc->cpu_state.cs = 0x1B;  // User code segment (0x18 | 0x03)

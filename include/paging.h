@@ -24,6 +24,10 @@
 #define PAGE_DIRECTORY_ENTRIES 1024
 #define PAGE_TABLE_ENTRIES 1024
 
+// User space virtual addresses
+#define USER_CODE_BASE  0x40000000  // 1GB - User code starts here
+#define USER_STACK_BASE 0x80000000  // 2GB - User stack starts here
+
 /**
  * Page directory entry (points to page table)
  */
