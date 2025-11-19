@@ -83,6 +83,9 @@ int process_get_priority(pid_t pid);
 // Kill a process
 void process_kill(pid_t pid);
 
+// Exit current process (terminate self)
+void process_exit(void);
+
 // Put current process to sleep for specified milliseconds
 void process_sleep(uint32_t ms);
 

@@ -247,6 +247,31 @@ void process_kill(pid_t pid) {
 }
 
 /**
+ * Exit current process (terminate self)
+ */
+void process_exit(void) {
+    if (!current_process) {
+        return;  // No process running
+    }
+
+    if (current_process->pid == 0) {
+        // Idle process cannot exit
+        return;
+    }
+
+    pid_t pid = current_process->pid;
+
+    // Kill current process
+    process_kill(pid);
+
+    // This point should never be reached as process_kill
+    // will schedule another process, but just in case:
+    while (1) {
+        __asm__ __volatile__("hlt");
+    }
+}
+
+/**
  * Put current process to sleep for specified milliseconds
  */
 void process_sleep(uint32_t ms) {

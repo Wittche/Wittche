@@ -36,10 +36,8 @@ void test_process_a(void) {
     screen_write_color("[Process A] ", MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
     screen_write("Finished!\n");
 
-    // Process terminates
-    while (1) {
-        __asm__ __volatile__("hlt");
-    }
+    // Process exits cleanly
+    process_exit();
 }
 
 /**
@@ -61,10 +59,8 @@ void test_process_b(void) {
     screen_write_color("[Process B] ", MAKE_COLOR(COLOR_LIGHT_BLUE, COLOR_BLACK));
     screen_write("Completed!\n");
 
-    // Process terminates
-    while (1) {
-        __asm__ __volatile__("hlt");
-    }
+    // Process exits cleanly
+    process_exit();
 }
 
 /**
@@ -86,10 +82,8 @@ void test_process_c(void) {
     screen_write_color("[Process C] ", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
     screen_write("Done!\n");
 
-    // Process terminates
-    while (1) {
-        __asm__ __volatile__("hlt");
-    }
+    // Process exits cleanly
+    process_exit();
 }
 
 /**
@@ -114,10 +108,8 @@ void test_process_sleep(void) {
     screen_write_color("[Sleep Process] ", MAKE_COLOR(COLOR_LIGHT_MAGENTA, COLOR_BLACK));
     screen_write("All iterations complete!\n");
 
-    // Process terminates
-    while (1) {
-        __asm__ __volatile__("hlt");
-    }
+    // Process exits cleanly
+    process_exit();
 }
 
 /**
@@ -165,10 +157,8 @@ void ipc_producer(void) {
     screen_write_color("[IPC Producer] ", MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
     screen_write("All messages sent!\n");
 
-    // Process terminates
-    while (1) {
-        __asm__ __volatile__("hlt");
-    }
+    // Process exits cleanly
+    process_exit();
 }
 
 /**
@@ -209,10 +199,8 @@ void ipc_consumer(void) {
     screen_write_color("[IPC Consumer] ", MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
     screen_write("All messages received!\n");
 
-    // Process terminates
-    while (1) {
-        __asm__ __volatile__("hlt");
-    }
+    // Process exits cleanly
+    process_exit();
 }
 
 /**
