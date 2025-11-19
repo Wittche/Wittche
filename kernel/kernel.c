@@ -252,34 +252,36 @@ void test_syscall(void) {
 
 /**
  * User Mode Test Process - runs in Ring 3
+ * Simple test without string literals
  */
 void test_usermode(void) {
-    // This function runs in Ring 3 (user mode)!
-    const char *msg = "[User Mode Test] Hello from Ring 3 (User Mode)!\n";
-    write(1, msg, strlen(msg));
+    // Build messages on stack to avoid .rodata access
+    char msg[64];
 
-    // Test getpid syscall from user mode
+    // Test 1: Simple write
+    msg[0] = '['; msg[1] = 'R'; msg[2] = 'i'; msg[3] = 'n'; msg[4] = 'g';
+    msg[5] = ' '; msg[6] = '3'; msg[7] = ']'; msg[8] = ' ';
+    msg[9] = 'H'; msg[10] = 'i'; msg[11] = '!'; msg[12] = '\n'; msg[13] = '\0';
+    write(1, msg, 13);
+
+    // Test 2: Get PID
     int my_pid = getpid();
-    char msg2[64];
-    strcpy(msg2, "[User Mode Test] My PID from user mode: ");
-    char pid_str[12];
-    itoa(my_pid, pid_str, 10);
-    strcat(msg2, pid_str);
-    strcat(msg2, "\n");
-    write(1, msg2, strlen(msg2));
+    msg[0] = 'P'; msg[1] = 'I'; msg[2] = 'D'; msg[3] = '=';
+    msg[4] = '0' + (my_pid % 10);
+    msg[5] = '\n'; msg[6] = '\0';
+    write(1, msg, 6);
 
-    // Test sleep syscall from user mode
-    const char *msg3 = "[User Mode Test] Sleeping for 1000ms in user mode...\n";
-    write(1, msg3, strlen(msg3));
-    sleep_ms(1000);
+    // Test 3: Sleep
+    msg[0] = 'S'; msg[1] = 'l'; msg[2] = 'e'; msg[3] = 'e'; msg[4] = 'p';
+    msg[5] = '.'; msg[6] = '.'; msg[7] = '\n'; msg[8] = '\0';
+    write(1, msg, 8);
+    sleep_ms(500);
 
-    const char *msg4 = "[User Mode Test] Woke up! All syscalls working from Ring 3!\n";
-    write(1, msg4, strlen(msg4));
+    // Test 4: Woke up
+    msg[0] = 'O'; msg[1] = 'K'; msg[2] = '!'; msg[3] = '\n'; msg[4] = '\0';
+    write(1, msg, 4);
 
-    // Exit using syscall
-    const char *msg5 = "[User Mode Test] Exiting user mode process...\n";
-    write(1, msg5, strlen(msg5));
-
+    // Exit
     exit(0);
 }
 

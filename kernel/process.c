@@ -207,10 +207,15 @@ static void user_mode_entry_wrapper(void) {
     void (*entry_point)(void) = (void (*)(void))proc->cpu_state.eip;
     uint32_t user_stack = proc->user_stack;
 
+    kprintf("[USERMODE] Switching to Ring 3: entry=0x%x, stack=0x%x\n",
+            (uint32_t)entry_point, user_stack);
+
     // Jump to Ring 3
     enter_usermode(entry_point, user_stack);
 
     // Should never reach here
+    kprintf_color(MAKE_COLOR(COLOR_RED, COLOR_BLACK),
+                 "[USERMODE ERROR] Returned from enter_usermode!\n");
     process_exit();
 }
 
