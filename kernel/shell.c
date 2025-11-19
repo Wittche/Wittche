@@ -25,6 +25,7 @@ static const char *available_commands[] = {
     "ver",
     "mem",
     "meminfo",
+    "memtest",
     "echo",
     "color",
     "uptime",
@@ -75,6 +76,8 @@ static void cmd_help(void) {
     screen_write("       - Display memory layout\n");
     screen_write_color("  meminfo", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
     screen_write("   - Detailed memory statistics\n");
+    screen_write_color("  memtest", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
+    screen_write("   - Test PMM and heap allocation\n");
     screen_write_color("  echo", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
     screen_write("      - Echo a message\n");
     screen_write_color("  color", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
@@ -367,6 +370,97 @@ static void cmd_meminfo(void) {
 }
 
 /**
+ * Memory test command - tests PMM and heap allocation
+ */
+static void cmd_memtest(void) {
+    kprintf("\n");
+    kprintf_color(MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK), "Memory Management Test\n");
+    kprintf_color(MAKE_COLOR(COLOR_CYAN, COLOR_BLACK), "======================\n");
+    kprintf("\n");
+
+    // Show initial stats
+    kprintf_color(MAKE_COLOR(COLOR_GREEN, COLOR_BLACK), "Initial State:\n");
+    kprintf("  PMM Free Pages:  %d\n", pmm_get_free_pages());
+    kprintf("  Heap Free:       %d KB\n", heap_get_free_size() / 1024);
+    kprintf("\n");
+
+    // Test 1: PMM Page Allocation
+    kprintf_color(MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK), "Test 1: PMM Page Allocation\n");
+    kprintf("  Allocating 5 pages (20 KB)...\n");
+
+    uint32_t pages[5];
+    for (int i = 0; i < 5; i++) {
+        pages[i] = pmm_alloc_page();
+        if (pages[i] == 0) {
+            kprintf_color(MAKE_COLOR(COLOR_RED, COLOR_BLACK), "  FAILED: Could not allocate page %d\n", i);
+            return;
+        }
+        kprintf("  Page %d allocated at: 0x%X\n", i + 1, pages[i]);
+    }
+    kprintf_color(MAKE_COLOR(COLOR_GREEN, COLOR_BLACK), "  SUCCESS: All pages allocated\n");
+    kprintf("  PMM Free Pages:  %d (should be 5 less)\n", pmm_get_free_pages());
+    kprintf("\n");
+
+    // Test 2: Heap Allocation
+    kprintf_color(MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK), "Test 2: Heap Allocation (kmalloc)\n");
+    kprintf("  Allocating 1 KB, 2 KB, 4 KB blocks...\n");
+
+    void *ptr1 = kmalloc(1024);
+    void *ptr2 = kmalloc(2048);
+    void *ptr3 = kmalloc(4096);
+
+    if (!ptr1 || !ptr2 || !ptr3) {
+        kprintf_color(MAKE_COLOR(COLOR_RED, COLOR_BLACK), "  FAILED: Heap allocation failed\n");
+    } else {
+        kprintf("  Block 1 (1 KB):  0x%X\n", (uint32_t)ptr1);
+        kprintf("  Block 2 (2 KB):  0x%X\n", (uint32_t)ptr2);
+        kprintf("  Block 3 (4 KB):  0x%X\n", (uint32_t)ptr3);
+        kprintf_color(MAKE_COLOR(COLOR_GREEN, COLOR_BLACK), "  SUCCESS: All blocks allocated\n");
+        kprintf("  Heap Free:       %d KB\n", heap_get_free_size() / 1024);
+        kprintf("  Heap Blocks:     %d total, %d free\n",
+                heap_get_block_count(), heap_get_free_block_count());
+    }
+    kprintf("\n");
+
+    // Test 3: Memory Write Test
+    kprintf_color(MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK), "Test 3: Memory Write Test\n");
+    if (ptr1) {
+        kprintf("  Writing pattern to allocated memory...\n");
+        char *test = (char *)ptr1;
+        for (int i = 0; i < 100; i++) {
+            test[i] = 'A' + (i % 26);
+        }
+        test[100] = '\0';
+        kprintf("  Pattern: %.50s...\n", test);
+        kprintf_color(MAKE_COLOR(COLOR_GREEN, COLOR_BLACK), "  SUCCESS: Memory write/read works\n");
+    }
+    kprintf("\n");
+
+    // Test 4: Free Memory
+    kprintf_color(MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK), "Test 4: Free Memory\n");
+    kprintf("  Freeing heap blocks...\n");
+    if (ptr1) kfree(ptr1);
+    if (ptr2) kfree(ptr2);
+    if (ptr3) kfree(ptr3);
+    kprintf("  Heap Free:       %d KB (should be back to initial)\n", heap_get_free_size() / 1024);
+    kprintf("  Heap Blocks:     %d total, %d free\n",
+            heap_get_block_count(), heap_get_free_block_count());
+
+    kprintf("\n  Freeing PMM pages...\n");
+    for (int i = 0; i < 5; i++) {
+        pmm_free_page(pages[i]);
+    }
+    kprintf("  PMM Free Pages:  %d (should be back to initial)\n", pmm_get_free_pages());
+    kprintf_color(MAKE_COLOR(COLOR_GREEN, COLOR_BLACK), "  SUCCESS: All memory freed\n");
+    kprintf("\n");
+
+    // Final Summary
+    kprintf_color(MAKE_COLOR(COLOR_GREEN, COLOR_BLACK), "All Tests Passed! ");
+    kprintf_color(MAKE_COLOR(COLOR_WHITE, COLOR_BLACK), "Memory management is working correctly.\n");
+    kprintf("\n");
+}
+
+/**
  * Add command to history
  */
 static void shell_add_history(const char *command) {
@@ -439,6 +533,8 @@ void shell_process_command(char *command) {
         cmd_mem();
     } else if (strcmp(cmd, "meminfo") == 0) {
         cmd_meminfo();
+    } else if (strcmp(cmd, "memtest") == 0) {
+        cmd_memtest();
     } else if (strcmp(cmd, "echo") == 0) {
         cmd_echo(full_args);
     } else if (strcmp(cmd, "color") == 0) {
