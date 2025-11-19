@@ -13,6 +13,22 @@
 static char command_history[MAX_HISTORY][MAX_CMD_LENGTH];
 static int history_count = 0;
 
+// Available commands for tab completion
+static const char *available_commands[] = {
+    "help",
+    "clear",
+    "cls",
+    "about",
+    "ver",
+    "mem",
+    "echo",
+    "color",
+    "uptime",
+    "history",
+    "banner",
+    NULL  // Sentinel
+};
+
 /**
  * Display welcome banner
  */
@@ -360,6 +376,176 @@ void shell_process_command(char *command) {
 }
 
 /**
+ * Handle tab completion
+ * Returns number of matches found
+ */
+static int handle_tab_completion(char *buffer, int length, int max_length) {
+    int matches = 0;
+    const char *match = NULL;
+    const char *common_prefix = NULL;
+    int common_len = 0;
+
+    // Find all commands that match the current prefix
+    for (int i = 0; available_commands[i] != NULL; i++) {
+        if (str_starts_with(available_commands[i], buffer)) {
+            matches++;
+            if (matches == 1) {
+                match = available_commands[i];
+                common_prefix = available_commands[i];
+                common_len = strlen(available_commands[i]);
+            } else if (matches == 2) {
+                // First time finding multiple matches - show them
+                screen_write("\n");
+                screen_write(available_commands[i-1]);
+                screen_write("  ");
+                screen_write(available_commands[i]);
+
+                // Calculate common prefix length
+                common_len = 0;
+                while (common_len < strlen(available_commands[i-1]) &&
+                       common_len < strlen(available_commands[i]) &&
+                       available_commands[i-1][common_len] == available_commands[i][common_len]) {
+                    common_len++;
+                }
+            } else {
+                // Show additional matches
+                screen_write("  ");
+                screen_write(available_commands[i]);
+            }
+        }
+    }
+
+    if (matches == 0) {
+        // No matches - do nothing
+        return 0;
+    } else if (matches == 1) {
+        // Single match - complete it
+        int match_len = strlen(match);
+        if (match_len < max_length - 1) {
+            for (int i = length; i < match_len; i++) {
+                buffer[i] = match[i];
+                screen_putchar(match[i]);
+            }
+            // Add space after completed command
+            if (match_len < max_length - 1) {
+                buffer[match_len] = ' ';
+                screen_putchar(' ');
+                return match_len + 1;
+            }
+            return match_len;
+        }
+    } else {
+        // Multiple matches - complete to common prefix
+        screen_write("\n");
+        shell_prompt();
+
+        // Complete to common prefix if it's longer than current input
+        if (common_len > length && common_len < max_length - 1) {
+            for (int i = 0; i < common_len; i++) {
+                buffer[i] = common_prefix[i];
+                screen_putchar(common_prefix[i]);
+            }
+            return common_len;
+        } else {
+            // Just redisplay current input
+            for (int i = 0; i < length; i++) {
+                screen_putchar(buffer[i]);
+            }
+        }
+    }
+
+    return length;
+}
+
+/**
+ * Get line with tab completion support
+ */
+static void shell_get_line(char *buffer, int max_length) {
+    int length = 0;
+    int cursor_pos = 0;
+    int start_col = screen_get_cursor_col();
+    int start_row = screen_get_cursor_row();
+
+    while (1) {
+        while (!keyboard_has_input()) {
+            __asm__ __volatile__("hlt");
+        }
+
+        char c = keyboard_getchar();
+
+        if (c == '\n') {
+            buffer[length] = '\0';
+            screen_putchar('\n');
+            return;
+        } else if (c == '\t') {
+            // Tab completion
+            int new_length = handle_tab_completion(buffer, length, max_length);
+            length = new_length;
+            cursor_pos = new_length;
+            start_col = screen_get_cursor_col();
+            start_row = screen_get_cursor_row();
+        } else if (c == '\b') {
+            if (cursor_pos > 0) {
+                for (int i = cursor_pos - 1; i < length - 1; i++) {
+                    buffer[i] = buffer[i + 1];
+                }
+                length--;
+                cursor_pos--;
+                screen_set_cursor(start_row, start_col);
+                for (int i = 0; i < length; i++) {
+                    screen_putchar(buffer[i]);
+                }
+                screen_putchar(' ');
+                screen_set_cursor(start_row, start_col + cursor_pos);
+            }
+        } else if (c == SPECIAL_KEY_LEFT) {
+            if (cursor_pos > 0) {
+                cursor_pos--;
+                screen_set_cursor(start_row, start_col + cursor_pos);
+            }
+        } else if (c == SPECIAL_KEY_RIGHT) {
+            if (cursor_pos < length) {
+                cursor_pos++;
+                screen_set_cursor(start_row, start_col + cursor_pos);
+            }
+        } else if (c == SPECIAL_KEY_HOME) {
+            cursor_pos = 0;
+            screen_set_cursor(start_row, start_col);
+        } else if (c == SPECIAL_KEY_END) {
+            cursor_pos = length;
+            screen_set_cursor(start_row, start_col + cursor_pos);
+        } else if (c == SPECIAL_KEY_DELETE) {
+            if (cursor_pos < length) {
+                for (int i = cursor_pos; i < length - 1; i++) {
+                    buffer[i] = buffer[i + 1];
+                }
+                length--;
+                screen_set_cursor(start_row, start_col);
+                for (int i = 0; i < length; i++) {
+                    screen_putchar(buffer[i]);
+                }
+                screen_putchar(' ');
+                screen_set_cursor(start_row, start_col + cursor_pos);
+            }
+        } else if (c >= 32 && c < 127 && length < max_length - 1) {
+            if (cursor_pos < length) {
+                for (int i = length; i > cursor_pos; i--) {
+                    buffer[i] = buffer[i - 1];
+                }
+            }
+            buffer[cursor_pos] = c;
+            length++;
+            cursor_pos++;
+            screen_set_cursor(start_row, start_col);
+            for (int i = 0; i < length; i++) {
+                screen_putchar(buffer[i]);
+            }
+            screen_set_cursor(start_row, start_col + cursor_pos);
+        }
+    }
+}
+
+/**
  * Shell main loop
  */
 void shell_run(void) {
@@ -367,7 +553,7 @@ void shell_run(void) {
 
     while (1) {
         shell_prompt();
-        keyboard_get_line(command_buffer, MAX_CMD_LENGTH);
+        shell_get_line(command_buffer, MAX_CMD_LENGTH);
         shell_process_command(command_buffer);
     }
 }

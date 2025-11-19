@@ -8,6 +8,7 @@
 static int shift_pressed = 0;
 static int caps_lock = 0;
 static int ctrl_pressed = 0;
+static int extended_key = 0;  // Track E0 prefix for extended scancodes
 
 // Keyboard buffer
 static char keyboard_buffer[KEYBOARD_BUFFER_SIZE];
@@ -60,6 +61,12 @@ int keyboard_has_input(void) {
 void keyboard_handler(void) {
     uint8_t scancode = inb(KEYBOARD_DATA_PORT);
 
+    // Check for extended scancode prefix (E0)
+    if (scancode == 0xE0) {
+        extended_key = 1;
+        return;
+    }
+
     // Check if key release (bit 7 set)
     if (scancode & 0x80) {
         scancode &= 0x7F;  // Remove release bit
@@ -69,6 +76,45 @@ void keyboard_handler(void) {
             shift_pressed = 0;
         } else if (scancode == KEY_LCTRL) {
             ctrl_pressed = 0;
+        }
+
+        extended_key = 0;  // Reset extended key flag
+        return;
+    }
+
+    // Handle extended scancodes (arrow keys, etc.)
+    if (extended_key) {
+        extended_key = 0;  // Reset flag
+
+        // Map extended scancodes to special internal codes
+        char special_key = 0;
+        switch (scancode) {
+            case KEY_LEFT:
+                special_key = SPECIAL_KEY_LEFT;
+                break;
+            case KEY_RIGHT:
+                special_key = SPECIAL_KEY_RIGHT;
+                break;
+            case KEY_UP:
+                special_key = SPECIAL_KEY_UP;
+                break;
+            case KEY_DOWN:
+                special_key = SPECIAL_KEY_DOWN;
+                break;
+            case KEY_HOME:
+                special_key = SPECIAL_KEY_HOME;
+                break;
+            case KEY_END:
+                special_key = SPECIAL_KEY_END;
+                break;
+            case KEY_DELETE:
+                special_key = SPECIAL_KEY_DELETE;
+                break;
+        }
+
+        // Add special key to buffer if recognized
+        if (special_key != 0) {
+            keyboard_buffer_add(special_key);
         }
         return;
     }
@@ -100,8 +146,7 @@ void keyboard_handler(void) {
     // Add to buffer if valid character
     if (ascii != 0) {
         keyboard_buffer_add(ascii);
-        // Echo character to screen
-        screen_putchar(ascii);
+        // Note: keyboard_get_line() handles screen output for proper cursor support
     }
 }
 
@@ -117,9 +162,12 @@ void keyboard_init(void) {
     screen_write("Keyboard driver initialized\n");
 }
 
-// Get a line of input from keyboard
+// Get a line of input from keyboard with cursor support
 void keyboard_get_line(char *buffer, int max_length) {
-    int pos = 0;
+    int length = 0;      // Total characters in buffer
+    int cursor_pos = 0;  // Current cursor position (0 to length)
+    int start_col = screen_get_cursor_col();  // Remember where input started
+    int start_row = screen_get_cursor_row();
 
     while (1) {
         while (!keyboard_has_input()) {
@@ -129,14 +177,86 @@ void keyboard_get_line(char *buffer, int max_length) {
         char c = keyboard_getchar();
 
         if (c == '\n') {
-            buffer[pos] = '\0';
+            // Enter pressed - return the line
+            buffer[length] = '\0';
+            screen_putchar('\n');
             return;
         } else if (c == '\b') {
-            if (pos > 0) {
-                pos--;
+            // Backspace - delete character before cursor
+            if (cursor_pos > 0) {
+                // Shift everything after cursor one position left
+                for (int i = cursor_pos - 1; i < length - 1; i++) {
+                    buffer[i] = buffer[i + 1];
+                }
+                length--;
+                cursor_pos--;
+
+                // Redraw the line from cursor position
+                screen_set_cursor(start_row, start_col);
+                for (int i = 0; i < length; i++) {
+                    screen_putchar(buffer[i]);
+                }
+                screen_putchar(' ');  // Clear last character
+                screen_set_cursor(start_row, start_col + cursor_pos);
             }
-        } else if (pos < max_length - 1) {
-            buffer[pos++] = c;
+        } else if (c == SPECIAL_KEY_LEFT) {
+            // Move cursor left
+            if (cursor_pos > 0) {
+                cursor_pos--;
+                screen_set_cursor(start_row, start_col + cursor_pos);
+            }
+        } else if (c == SPECIAL_KEY_RIGHT) {
+            // Move cursor right
+            if (cursor_pos < length) {
+                cursor_pos++;
+                screen_set_cursor(start_row, start_col + cursor_pos);
+            }
+        } else if (c == SPECIAL_KEY_HOME) {
+            // Jump to beginning
+            cursor_pos = 0;
+            screen_set_cursor(start_row, start_col);
+        } else if (c == SPECIAL_KEY_END) {
+            // Jump to end
+            cursor_pos = length;
+            screen_set_cursor(start_row, start_col + cursor_pos);
+        } else if (c == SPECIAL_KEY_DELETE) {
+            // Delete character at cursor
+            if (cursor_pos < length) {
+                // Shift everything after cursor one position left
+                for (int i = cursor_pos; i < length - 1; i++) {
+                    buffer[i] = buffer[i + 1];
+                }
+                length--;
+
+                // Redraw the line from cursor position
+                screen_set_cursor(start_row, start_col);
+                for (int i = 0; i < length; i++) {
+                    screen_putchar(buffer[i]);
+                }
+                screen_putchar(' ');  // Clear last character
+                screen_set_cursor(start_row, start_col + cursor_pos);
+            }
+        } else if (c >= 32 && c < 127 && length < max_length - 1) {
+            // Printable character - insert at cursor position
+            if (cursor_pos < length) {
+                // Shift everything after cursor one position right
+                for (int i = length; i > cursor_pos; i--) {
+                    buffer[i] = buffer[i - 1];
+                }
+            }
+
+            // Insert new character
+            buffer[cursor_pos] = c;
+            length++;
+            cursor_pos++;
+
+            // Redraw from cursor position to end
+            screen_set_cursor(start_row, start_col);
+            for (int i = 0; i < length; i++) {
+                screen_putchar(buffer[i]);
+            }
+            screen_set_cursor(start_row, start_col + cursor_pos);
         }
+        // Ignore special keys we don't handle (UP, DOWN for now)
     }
 }

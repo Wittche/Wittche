@@ -16,6 +16,22 @@
 #define KEY_LCTRL 0x1D
 #define KEY_ALT 0x38
 #define KEY_CAPS 0x3A
+#define KEY_UP 0x48
+#define KEY_DOWN 0x50
+#define KEY_LEFT 0x4B
+#define KEY_RIGHT 0x4D
+#define KEY_HOME 0x47
+#define KEY_END 0x4F
+#define KEY_DELETE 0x53
+
+// Special key codes (internal use)
+#define SPECIAL_KEY_UP 0x01
+#define SPECIAL_KEY_DOWN 0x02
+#define SPECIAL_KEY_LEFT 0x03
+#define SPECIAL_KEY_RIGHT 0x04
+#define SPECIAL_KEY_HOME 0x05
+#define SPECIAL_KEY_END 0x06
+#define SPECIAL_KEY_DELETE 0x07
 
 // Keyboard buffer size
 #define KEYBOARD_BUFFER_SIZE 256
