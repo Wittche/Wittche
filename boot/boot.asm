@@ -23,7 +23,7 @@ start:
     mov ch, 0           ; Cylinder 0
     mov cl, 2           ; Start from sector 2 (sector 1 is boot sector)
     mov dh, 0           ; Head 0
-    mov dl, 0x80        ; First hard drive (0x00 for floppy)
+    mov dl, 0x00        ; Floppy disk (0x80 for hard drive)
     mov bx, 0x1000      ; ES:BX = 0x1000:0x0000
     mov es, bx
     xor bx, bx
