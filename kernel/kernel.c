@@ -15,6 +15,7 @@
 #include "../include/keyboard.h"
 #include "../include/timer.h"
 #include "../include/shell.h"
+#include "../include/string.h"
 
 /**
  * Test process A - prints message periodically
@@ -112,6 +113,101 @@ void test_process_sleep(void) {
 
     screen_write_color("[Sleep Process] ", MAKE_COLOR(COLOR_LIGHT_MAGENTA, COLOR_BLACK));
     screen_write("All iterations complete!\n");
+
+    // Process terminates
+    while (1) {
+        __asm__ __volatile__("hlt");
+    }
+}
+
+/**
+ * IPC Producer Process - sends messages to consumer
+ */
+void ipc_producer(void) {
+    screen_write_color("[IPC Producer] ", MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
+    screen_write("Starting message producer (PID ");
+    screen_write_dec(process_current()->pid);
+    screen_write(")\n");
+
+    // Wait a bit for consumer to start
+    process_sleep(500);
+
+    // Find consumer process (PID should be current_pid + 1)
+    pid_t consumer_pid = process_current()->pid + 1;
+
+    for (int i = 0; i < 5; i++) {
+        char message[64];
+        strcpy(message, "Message #");
+        char num_str[12];
+        itoa(i, num_str, 10);
+        strcat(message, num_str);
+        strcat(message, " from Producer");
+
+        screen_write_color("[IPC Producer] ", MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
+        screen_write("Sending: '");
+        screen_write(message);
+        screen_write("' to PID ");
+        screen_write_dec(consumer_pid);
+        screen_write("\n");
+
+        int result = process_send_message(consumer_pid, message, strlen(message) + 1);
+        if (result < 0) {
+            screen_write_color("[IPC Producer] ", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
+            screen_write("Failed to send message (error code: ");
+            screen_write_dec(result);
+            screen_write(")\n");
+        }
+
+        // Wait between messages
+        process_sleep(1000);
+    }
+
+    screen_write_color("[IPC Producer] ", MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
+    screen_write("All messages sent!\n");
+
+    // Process terminates
+    while (1) {
+        __asm__ __volatile__("hlt");
+    }
+}
+
+/**
+ * IPC Consumer Process - receives messages from producer
+ */
+void ipc_consumer(void) {
+    screen_write_color("[IPC Consumer] ", MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
+    screen_write("Starting message consumer (PID ");
+    screen_write_dec(process_current()->pid);
+    screen_write(")\n");
+
+    char buffer[256];
+    pid_t sender;
+    int received_count = 0;
+
+    while (received_count < 5) {
+        // Check for messages
+        if (process_has_messages() > 0) {
+            int bytes = process_receive_message(buffer, sizeof(buffer), &sender);
+            if (bytes > 0) {
+                screen_write_color("[IPC Consumer] ", MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
+                screen_write("Received from PID ");
+                screen_write_dec(sender);
+                screen_write(": '");
+                screen_write(buffer);
+                screen_write("'\n");
+                received_count++;
+            }
+        } else {
+            // No messages yet, yield CPU
+            process_yield();
+        }
+
+        // Small delay
+        process_sleep(100);
+    }
+
+    screen_write_color("[IPC Consumer] ", MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
+    screen_write("All messages received!\n");
 
     // Process terminates
     while (1) {

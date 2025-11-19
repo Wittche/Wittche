@@ -121,6 +121,19 @@ pid_t process_create(const char *name, void (*entry_point)(void), uint32_t stack
     process->wake_time = 0;  // Not sleeping
     process->next = NULL;
 
+    // Initialize IPC message queue
+    process->msg_queue = (message_queue_t *)kmalloc(sizeof(message_queue_t));
+    if (!process->msg_queue) {
+        kprintf_color(MAKE_COLOR(COLOR_RED, COLOR_BLACK),
+                     "[PROCESS ERROR] Failed to allocate message queue\n");
+        kfree((void *)process->stack_base);
+        kfree(process);
+        return 0;
+    }
+    process->msg_queue->head = 0;
+    process->msg_queue->tail = 0;
+    process->msg_queue->count = 0;
+
     // Setup stack and entry point
     uint32_t *stack = (uint32_t *)(process->stack_base + stack_size);
     stack--;  // Move to top of stack
@@ -217,6 +230,9 @@ void process_kill(pid_t pid) {
 
             // Free resources
             kfree((void *)process->stack_base);
+            if (process->msg_queue) {
+                kfree(process->msg_queue);
+            }
             kfree(process);
             process_table[i] = NULL;
             process_count_val--;
@@ -288,6 +304,96 @@ void process_check_sleeping(void) {
             }
         }
     }
+}
+
+/**
+ * Send message to another process (IPC)
+ */
+int process_send_message(pid_t target_pid, const char *message, uint32_t length) {
+    if (!message || length == 0 || length > MAX_MESSAGE_SIZE) {
+        return -1;  // Invalid parameters
+    }
+
+    // Find target process
+    process_t *target = process_get(target_pid);
+    if (!target || !target->msg_queue) {
+        return -2;  // Process not found or no message queue
+    }
+
+    // Check if queue is full
+    if (target->msg_queue->count >= MESSAGE_QUEUE_SIZE) {
+        return -3;  // Queue full
+    }
+
+    // Get tail position for new message
+    uint32_t tail = target->msg_queue->tail;
+    ipc_message_t *msg = &target->msg_queue->messages[tail];
+
+    // Copy message data
+    msg->sender = current_process ? current_process->pid : 0;
+    msg->length = length > MAX_MESSAGE_SIZE ? MAX_MESSAGE_SIZE : length;
+    memcpy(msg->data, message, msg->length);
+
+    // Update queue pointers
+    target->msg_queue->tail = (tail + 1) % MESSAGE_QUEUE_SIZE;
+    target->msg_queue->count++;
+
+    // If target process is blocked waiting for messages, wake it up
+    if (target->state == PROCESS_STATE_BLOCKED && target->wake_time == 0) {
+        target->state = PROCESS_STATE_READY;
+    }
+
+    return 0;  // Success
+}
+
+/**
+ * Receive message from current process queue (IPC)
+ */
+int process_receive_message(char *buffer, uint32_t max_length, pid_t *sender) {
+    if (!current_process || !current_process->msg_queue) {
+        return -1;  // No current process or message queue
+    }
+
+    if (!buffer || max_length == 0) {
+        return -2;  // Invalid buffer
+    }
+
+    message_queue_t *queue = current_process->msg_queue;
+
+    // Check if queue is empty
+    if (queue->count == 0) {
+        return -3;  // No messages available
+    }
+
+    // Get head message
+    uint32_t head = queue->head;
+    ipc_message_t *msg = &queue->messages[head];
+
+    // Copy message data to buffer
+    uint32_t copy_length = msg->length < max_length ? msg->length : max_length;
+    memcpy(buffer, msg->data, copy_length);
+
+    // Set sender if requested
+    if (sender) {
+        *sender = msg->sender;
+    }
+
+    // Update queue pointers
+    queue->head = (head + 1) % MESSAGE_QUEUE_SIZE;
+    queue->count--;
+
+    return (int)copy_length;  // Return number of bytes copied
+}
+
+/**
+ * Check if current process has messages waiting (IPC)
+ */
+int process_has_messages(void) {
+    if (!current_process || !current_process->msg_queue) {
+        return 0;  // No messages
+    }
+
+    return current_process->msg_queue->count;
 }
 
 /**
@@ -368,6 +474,16 @@ void process_schedule(void) {
     } else {
         current_process->state = PROCESS_STATE_RUNNING;
     }
+}
+
+/**
+ * Yield CPU to next process
+ * Voluntarily gives up the CPU and triggers scheduling
+ */
+void process_yield(void) {
+    // Simply trigger the scheduler
+    // Current process will be marked READY and scheduler will pick next process
+    process_schedule();
 }
 
 /**

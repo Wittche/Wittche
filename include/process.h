@@ -13,8 +13,27 @@
 // Maximum number of processes
 #define MAX_PROCESSES 16
 
+// IPC Message Configuration
+#define MAX_MESSAGE_SIZE 256
+#define MESSAGE_QUEUE_SIZE 8
+
 // Process ID type
 typedef uint32_t pid_t;
+
+// IPC Message structure
+typedef struct {
+    pid_t sender;              // Sender process ID
+    char data[MAX_MESSAGE_SIZE]; // Message data
+    uint32_t length;           // Message length
+} ipc_message_t;
+
+// Message Queue structure
+typedef struct {
+    ipc_message_t messages[MESSAGE_QUEUE_SIZE];
+    uint32_t head;             // Queue head (read position)
+    uint32_t tail;             // Queue tail (write position)
+    uint32_t count;            // Number of messages in queue
+} message_queue_t;
 
 // CPU registers state for context switching
 typedef struct {
@@ -37,6 +56,7 @@ typedef struct process {
     uint32_t time_slice;        // CPU time slice
     uint32_t total_time;        // Total CPU time used
     uint32_t wake_time;         // Wake up time in ticks (for sleeping processes)
+    message_queue_t *msg_queue; // IPC message queue
     struct process *next;       // Next process in list
 } process_t;
 
@@ -71,6 +91,16 @@ int process_wake(pid_t pid);
 
 // Check and wake up sleeping processes (called by timer)
 void process_check_sleeping(void);
+
+// IPC - Inter-Process Communication
+// Send message to another process
+int process_send_message(pid_t target_pid, const char *message, uint32_t length);
+
+// Receive message (blocking if no messages)
+int process_receive_message(char *buffer, uint32_t max_length, pid_t *sender);
+
+// Check if process has messages waiting
+int process_has_messages(void);
 
 // Get current running process
 process_t *process_current(void);

@@ -15,6 +15,8 @@ extern void test_process_a(void);
 extern void test_process_b(void);
 extern void test_process_c(void);
 extern void test_process_sleep(void);
+extern void ipc_producer(void);
+extern void ipc_consumer(void);
 
 // Command history
 #define MAX_HISTORY 10
@@ -38,6 +40,7 @@ static const char *available_commands[] = {
     "sleeptest",
     "nice",
     "kill",
+    "ipctest",
     "echo",
     "color",
     "uptime",
@@ -100,6 +103,8 @@ static void cmd_help(void) {
     screen_write("      - Change process priority\n");
     screen_write_color("  kill", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
     screen_write("      - Terminate a process\n");
+    screen_write_color("  ipctest", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
+    screen_write("   - Test Inter-Process Communication\n");
     screen_write_color("  echo", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
     screen_write("      - Echo a message\n");
     screen_write_color("  color", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
@@ -772,6 +777,47 @@ static void cmd_kill(const char *args) {
 }
 
 /**
+ * ipctest command - test Inter-Process Communication
+ * Creates producer and consumer processes that exchange messages
+ */
+static void cmd_ipctest(void) {
+    kprintf("\n");
+    kprintf_color(MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK), "Inter-Process Communication Test\n");
+    kprintf_color(MAKE_COLOR(COLOR_CYAN, COLOR_BLACK), "=================================\n");
+    kprintf("Spawning Producer and Consumer processes...\n\n");
+
+    // Create producer process
+    pid_t producer_pid = process_create_with_priority("IPC_Producer", ipc_producer, 4096, 10);
+    if (producer_pid == 0) {
+        kprintf_color(MAKE_COLOR(COLOR_RED, COLOR_BLACK),
+                     "Failed to create producer process\n\n");
+        return;
+    }
+
+    // Create consumer process
+    pid_t consumer_pid = process_create_with_priority("IPC_Consumer", ipc_consumer, 4096, 10);
+    if (consumer_pid == 0) {
+        kprintf_color(MAKE_COLOR(COLOR_RED, COLOR_BLACK),
+                     "Failed to create consumer process\n\n");
+        return;
+    }
+
+    kprintf_color(MAKE_COLOR(COLOR_GREEN, COLOR_BLACK),
+                 "Created Producer Process (PID %d)\n", producer_pid);
+    kprintf_color(MAKE_COLOR(COLOR_GREEN, COLOR_BLACK),
+                 "Created Consumer Process (PID %d)\n", consumer_pid);
+
+    kprintf("\nWatch the processes:\n");
+    kprintf("1. Producer sends 5 messages (one per second)\n");
+    kprintf("2. Consumer receives and displays messages\n");
+    kprintf("3. Message queue holds up to 8 messages\n");
+    kprintf("4. Each message is max 256 bytes\n\n");
+
+    kprintf("Use 'ps' command to monitor process states!\n");
+    kprintf("\n");
+}
+
+/**
  * Add command to history
  */
 static void shell_add_history(const char *command) {
@@ -856,6 +902,8 @@ void shell_process_command(char *command) {
         cmd_nice(full_args);
     } else if (strcmp(cmd, "kill") == 0) {
         cmd_kill(full_args);
+    } else if (strcmp(cmd, "ipctest") == 0) {
+        cmd_ipctest();
     } else if (strcmp(cmd, "echo") == 0) {
         cmd_echo(full_args);
     } else if (strcmp(cmd, "color") == 0) {
