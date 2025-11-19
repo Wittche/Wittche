@@ -98,9 +98,9 @@ void screen_clear(void) {
 }
 
 /**
- * Put a single character on screen
+ * Put a single character on screen (internal - no cursor update)
  */
-void screen_putchar(char c) {
+static void screen_putchar_internal(char c) {
     if (c == '\n') {
         // Newline
         cursor_col = 0;
@@ -138,7 +138,13 @@ void screen_putchar(char c) {
     if (cursor_row >= SCREEN_HEIGHT) {
         screen_scroll();
     }
+}
 
+/**
+ * Put a single character on screen
+ */
+void screen_putchar(char c) {
+    screen_putchar_internal(c);
     screen_update_cursor();
 }
 
@@ -149,18 +155,30 @@ void screen_write(const char *str) {
     if (!str) return;
 
     for (int i = 0; str[i] != '\0'; i++) {
-        screen_putchar(str[i]);
+        screen_putchar_internal(str[i]);
     }
+
+    // Update cursor only once after writing entire string
+    screen_update_cursor();
 }
 
 /**
  * Write a string with specific color
  */
 void screen_write_color(const char *str, uint8_t color) {
+    if (!str) return;
+
     uint8_t old_color = current_color;
     current_color = color;
-    screen_write(str);
+
+    for (int i = 0; str[i] != '\0'; i++) {
+        screen_putchar_internal(str[i]);
+    }
+
     current_color = old_color;
+
+    // Update cursor only once after writing entire string
+    screen_update_cursor();
 }
 
 /**
@@ -175,7 +193,13 @@ void screen_write_hex(uint32_t num) {
         num >>= 4;
     }
 
-    screen_write(buffer);
+    // Write buffer character by character without cursor updates
+    for (int i = 0; buffer[i] != '\0'; i++) {
+        screen_putchar_internal(buffer[i]);
+    }
+
+    // Update cursor only once
+    screen_update_cursor();
 }
 
 /**
@@ -186,7 +210,8 @@ void screen_write_dec(uint32_t num) {
     int i = 0;
 
     if (num == 0) {
-        screen_putchar('0');
+        screen_putchar_internal('0');
+        screen_update_cursor();
         return;
     }
 
@@ -196,10 +221,13 @@ void screen_write_dec(uint32_t num) {
         num /= 10;
     }
 
-    // Print in correct order
+    // Print in correct order (no cursor updates in loop)
     for (int j = i - 1; j >= 0; j--) {
-        screen_putchar(buffer[j]);
+        screen_putchar_internal(buffer[j]);
     }
+
+    // Update cursor only once
+    screen_update_cursor();
 }
 
 /**
