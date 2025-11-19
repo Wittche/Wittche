@@ -5,6 +5,9 @@
 #include "../include/timer.h"
 #include "../include/kprintf.h"
 #include "../include/types.h"
+#include "../include/pmm.h"
+#include "../include/heap.h"
+#include "../include/paging.h"
 
 // Command history
 #define MAX_HISTORY 10
@@ -21,6 +24,7 @@ static const char *available_commands[] = {
     "about",
     "ver",
     "mem",
+    "meminfo",
     "echo",
     "color",
     "uptime",
@@ -35,7 +39,7 @@ static const char *available_commands[] = {
 void shell_display_banner(void) {
     screen_write_color("\n", DEFAULT_COLOR);
     screen_write_color("===========================================\n", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
-    screen_write_color(" Wittche Operating System v0.5\n", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
+    screen_write_color(" Wittche Operating System v0.6\n", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
     screen_write_color("===========================================\n", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
     screen_write("\n");
     screen_write("Welcome to Wittche OS!\n");
@@ -68,7 +72,9 @@ static void cmd_help(void) {
     screen_write_color("  ver", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
     screen_write("       - Show OS version\n");
     screen_write_color("  mem", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
-    screen_write("       - Display memory information\n");
+    screen_write("       - Display memory layout\n");
+    screen_write_color("  meminfo", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
+    screen_write("   - Detailed memory statistics\n");
     screen_write_color("  echo", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
     screen_write("      - Echo a message\n");
     screen_write_color("  color", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
@@ -94,7 +100,7 @@ static void cmd_clear(void) {
  */
 static void cmd_about(void) {
     screen_write("\n");
-    screen_write_color("Wittche Operating System v0.5\n", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
+    screen_write_color("Wittche Operating System v0.6\n", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
     screen_write_color("===============================\n", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
     screen_write("\n");
     screen_write("A simple x86 operating system for educational purposes.\n\n");
@@ -102,12 +108,15 @@ static void cmd_about(void) {
     screen_write_color("Features:\n", MAKE_COLOR(COLOR_GREEN, COLOR_BLACK));
     screen_write("  - 32-bit protected mode kernel\n");
     screen_write("  - Hardware interrupt handling (IDT)\n");
+    screen_write("  - Physical Memory Manager (PMM) with bitmap allocator\n");
+    screen_write("  - Kernel heap (kmalloc/kfree) with 4MB size\n");
+    screen_write("  - Paging (virtual memory) with identity mapping\n");
     screen_write("  - Programmable Interval Timer (PIT)\n");
-    screen_write("  - PS/2 keyboard driver\n");
+    screen_write("  - PS/2 keyboard driver with arrow key support\n");
     screen_write("  - VGA text mode with hardware cursor\n");
     screen_write("  - Proper screen scrolling\n");
     screen_write("  - Printf-style formatted output (kprintf)\n");
-    screen_write("  - Interactive shell with command parsing\n");
+    screen_write("  - Interactive shell with tab completion\n");
     screen_write("\n");
 
     screen_write_color("Technical Info:\n", MAKE_COLOR(COLOR_GREEN, COLOR_BLACK));
@@ -232,9 +241,9 @@ static void cmd_ver(void) {
     kprintf_color(MAKE_COLOR(COLOR_CYAN, COLOR_BLACK), "==============================\n");
     kprintf("\n");
     kprintf("  Version:     ");
-    kprintf_color(MAKE_COLOR(COLOR_CYAN, COLOR_BLACK), "0.5.0\n");
+    kprintf_color(MAKE_COLOR(COLOR_CYAN, COLOR_BLACK), "0.6.0\n");
     kprintf("  Codename:    ");
-    kprintf_color(MAKE_COLOR(COLOR_CYAN, COLOR_BLACK), "Enhanced UX\n");
+    kprintf_color(MAKE_COLOR(COLOR_CYAN, COLOR_BLACK), "Memory Manager\n");
     kprintf("  Build Date:  ");
     kprintf_color(MAKE_COLOR(COLOR_CYAN, COLOR_BLACK), "2024-11\n");
     kprintf("  Arch:        ");
@@ -277,10 +286,83 @@ static void cmd_mem(void) {
     kprintf("\n");
 
     kprintf_color(MAKE_COLOR(COLOR_GREEN, COLOR_BLACK), "Memory Statistics:\n");
-    kprintf("  Available:       ");
-    kprintf_color(MAKE_COLOR(COLOR_CYAN, COLOR_BLACK), "Managed by kernel\n");
-    kprintf("  Note:            ");
-    kprintf_color(MAKE_COLOR(COLOR_DARK_GREY, COLOR_BLACK), "Dynamic memory allocator coming soon!\n");
+    kprintf("  Total RAM:       %d MB\n", pmm_get_total_memory() / (1024 * 1024));
+    kprintf("  Used:            %d KB (%d pages)\n",
+            pmm_get_used_memory() / 1024, pmm_get_used_pages());
+    kprintf("  Free:            %d KB (%d pages)\n",
+            pmm_get_free_memory() / 1024, pmm_get_free_pages());
+    kprintf("\n");
+}
+
+/**
+ * Memory info command - detailed memory statistics
+ */
+static void cmd_meminfo(void) {
+    kprintf("\n");
+    kprintf_color(MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK), "Wittche OS Memory Information\n");
+    kprintf_color(MAKE_COLOR(COLOR_CYAN, COLOR_BLACK), "=============================\n");
+    kprintf("\n");
+
+    // Physical Memory Manager stats
+    kprintf_color(MAKE_COLOR(COLOR_GREEN, COLOR_BLACK), "Physical Memory (PMM):\n");
+    kprintf("  Total Memory:    %d MB (%d bytes)\n",
+            pmm_get_total_memory() / (1024 * 1024), pmm_get_total_memory());
+    kprintf("  Used Memory:     %d KB (%d bytes)\n",
+            pmm_get_used_memory() / 1024, pmm_get_used_memory());
+    kprintf("  Free Memory:     %d KB (%d bytes)\n",
+            pmm_get_free_memory() / 1024, pmm_get_free_memory());
+    kprintf("  Total Pages:     %d (4KB each)\n", pmm_get_total_pages());
+    kprintf("  Used Pages:      %d\n", pmm_get_used_pages());
+    kprintf("  Free Pages:      %d\n", pmm_get_free_pages());
+
+    // Calculate usage percentage
+    uint32_t usage_percent = (pmm_get_used_memory() * 100) / pmm_get_total_memory();
+    kprintf("  Usage:           %d%%\n", usage_percent);
+    kprintf("\n");
+
+    // Kernel Heap stats
+    kprintf_color(MAKE_COLOR(COLOR_GREEN, COLOR_BLACK), "Kernel Heap:\n");
+    kprintf("  Heap Start:      0x%X\n", HEAP_START);
+    kprintf("  Heap Size:       %d MB (%d bytes)\n",
+            heap_get_total_size() / (1024 * 1024), heap_get_total_size());
+    kprintf("  Used:            %d KB (%d bytes)\n",
+            heap_get_used_size() / 1024, heap_get_used_size());
+    kprintf("  Free:            %d KB (%d bytes)\n",
+            heap_get_free_size() / 1024, heap_get_free_size());
+    kprintf("  Total Blocks:    %d\n", heap_get_block_count());
+    kprintf("  Free Blocks:     %d\n", heap_get_free_block_count());
+
+    // Heap usage percentage
+    uint32_t heap_usage = 0;
+    if (heap_get_total_size() > 0) {
+        heap_usage = (heap_get_used_size() * 100) / heap_get_total_size();
+    }
+    kprintf("  Usage:           %d%%\n", heap_usage);
+    kprintf("\n");
+
+    // Paging info
+    kprintf_color(MAKE_COLOR(COLOR_GREEN, COLOR_BLACK), "Virtual Memory (Paging):\n");
+    kprintf("  Status:          ");
+    kprintf_color(MAKE_COLOR(COLOR_CYAN, COLOR_BLACK), "ENABLED\n");
+    kprintf("  Page Size:       4 KB\n");
+    kprintf("  Page Directory:  0x%X\n", (uint32_t)paging_get_directory());
+    kprintf("  Identity Map:    First 16 MB\n");
+    kprintf("\n");
+
+    // Memory bar graph
+    kprintf_color(MAKE_COLOR(COLOR_GREEN, COLOR_BLACK), "Memory Usage Bar:\n");
+    kprintf("  [");
+
+    // Draw 50-character bar
+    int bars = (usage_percent * 50) / 100;
+    for (int i = 0; i < 50; i++) {
+        if (i < bars) {
+            kprintf_color(MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK), "=");
+        } else {
+            kprintf_color(MAKE_COLOR(COLOR_DARK_GREY, COLOR_BLACK), "-");
+        }
+    }
+    kprintf("] %d%%\n", usage_percent);
     kprintf("\n");
 }
 
@@ -355,6 +437,8 @@ void shell_process_command(char *command) {
         cmd_ver();
     } else if (strcmp(cmd, "mem") == 0) {
         cmd_mem();
+    } else if (strcmp(cmd, "meminfo") == 0) {
+        cmd_meminfo();
     } else if (strcmp(cmd, "echo") == 0) {
         cmd_echo(full_args);
     } else if (strcmp(cmd, "color") == 0) {

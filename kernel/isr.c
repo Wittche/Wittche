@@ -3,6 +3,7 @@
 #include "../include/screen.h"
 #include "../include/keyboard.h"
 #include "../include/timer.h"
+#include "../include/paging.h"
 
 // Registers struct passed from assembly
 struct registers {
@@ -54,6 +55,12 @@ extern void pic_send_eoi(uint8_t irq);
 // ISR handler
 void isr_handler(struct registers *regs) {
     if (regs->int_no < 32) {
+        // Special handling for page fault (interrupt 14)
+        if (regs->int_no == 14) {
+            page_fault_handler();
+            return;  // Page fault handler will halt if needed
+        }
+
         screen_write("\n");
         screen_write_color("[EXCEPTION] ", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
         screen_write_color(exception_messages[regs->int_no], MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));

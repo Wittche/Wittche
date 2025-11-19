@@ -8,6 +8,9 @@
 #include "../include/types.h"
 #include "../include/screen.h"
 #include "../include/idt.h"
+#include "../include/pmm.h"
+#include "../include/heap.h"
+#include "../include/paging.h"
 #include "../include/keyboard.h"
 #include "../include/timer.h"
 #include "../include/shell.h"
@@ -28,6 +31,11 @@ void kernel_main(void) {
 
     // Initialize Interrupt Descriptor Table
     idt_init();
+
+    // Initialize memory management
+    pmm_init();     // Physical memory manager
+    heap_init();    // Kernel heap
+    paging_init();  // Virtual memory (enables paging)
 
     // Initialize timer (PIT)
     timer_init();
