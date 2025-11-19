@@ -112,11 +112,26 @@ protected_mode:
     ; This removes all BIOS messages and ensures clean start
     mov edi, 0xB8000    ; VGA text buffer start
     mov ecx, 2000       ; 80x25 = 2000 characters
-    mov ax, 0x0F20      ; White on black space (0x0F = color, 0x20 = space)
+    mov ax, 0x0720      ; Light grey on black space
 .clear_loop:
     mov [edi], ax       ; Write space with color
     add edi, 2          ; Move to next character (2 bytes per char)
     loop .clear_loop    ; Repeat until ecx = 0
+
+    ; Reset cursor to position 0
+    mov dx, 0x3D4       ; VGA cursor control register
+    mov al, 0x0F        ; Cursor location low byte
+    out dx, al
+    mov dx, 0x3D5
+    mov al, 0x00        ; Position 0
+    out dx, al
+
+    mov dx, 0x3D4
+    mov al, 0x0E        ; Cursor location high byte
+    out dx, al
+    mov dx, 0x3D5
+    mov al, 0x00        ; Position 0
+    out dx, al
 
     ; Jump to kernel (VGA is now clean)
     call 0x10000        ; Call kernel (will return here if kernel returns)
