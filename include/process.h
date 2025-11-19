@@ -3,6 +3,7 @@
 #define PROCESS_H
 
 #include "types.h"
+#include "paging.h"
 
 // Process states
 #define PROCESS_STATE_READY     0
@@ -60,6 +61,7 @@ typedef struct process {
     uint32_t total_time;        // Total CPU time used
     uint32_t wake_time;         // Wake up time in ticks (for sleeping processes)
     message_queue_t *msg_queue; // IPC message queue
+    page_directory_t *page_directory; // Per-process page directory (virtual memory)
     struct process *next;       // Next process in list
 } process_t;
 

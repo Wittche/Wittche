@@ -260,3 +260,93 @@ void page_fault_handler(void) {
     // For now, just halt
     __asm__ __volatile__("cli; hlt");
 }
+
+/**
+ * Create new page directory for user process
+ * Maps kernel space (higher half) and leaves user space empty
+ */
+page_directory_t *paging_create_user_directory(void) {
+    // Allocate page directory
+    page_directory_t *dir = (page_directory_t *)pmm_alloc_page();
+    if (!dir) {
+        return NULL;
+    }
+
+    // Clear directory
+    memset(dir, 0, sizeof(page_directory_t));
+
+    // Copy kernel mappings (top 256 entries = 1GB for kernel @ 3GB-4GB)
+    // For now, we'll use identity mapping for kernel (first 16MB)
+    // This maps kernel code/data so process can make syscalls
+    for (int i = 0; i < 4; i++) {  // First 4 entries = 16MB
+        dir->entries[i] = kernel_directory.entries[i];
+    }
+
+    return dir;
+}
+
+/**
+ * Clone page directory (copy-on-write can be added later)
+ * For now, this creates a new directory with kernel mappings
+ */
+page_directory_t *paging_clone_directory(page_directory_t *src) {
+    (void)src;  // Not fully implemented yet
+    return paging_create_user_directory();
+}
+
+/**
+ * Free page directory and all its page tables
+ */
+void paging_free_directory(page_directory_t *dir) {
+    if (!dir) return;
+
+    // Free user space page tables (skip kernel mappings)
+    for (int i = 4; i < PAGE_DIRECTORY_ENTRIES; i++) {
+        if (dir->entries[i] & PAGE_PRESENT) {
+            page_table_t *pt = (page_table_t *)(dir->entries[i] & 0xFFFFF000);
+
+            // Free all pages in this page table
+            for (int j = 0; j < PAGE_TABLE_ENTRIES; j++) {
+                if (pt->entries[j] & PAGE_PRESENT) {
+                    uint32_t physical = pt->entries[j] & 0xFFFFF000;
+                    pmm_free_page(physical);
+                }
+            }
+
+            // Free page table itself
+            pmm_free_page((uint32_t)pt);
+        }
+    }
+
+    // Free directory
+    pmm_free_page((uint32_t)dir);
+}
+
+/**
+ * Map user code/data to process address space
+ * virtual_addr: where to map in virtual space (e.g., 0x40000000)
+ * physical_addr: where code/data is in physical memory
+ * size: size in bytes
+ */
+void paging_map_user_code(page_directory_t *dir, uint32_t virtual_addr,
+                          uint32_t physical_addr, uint32_t size) {
+    // Save current directory
+    page_directory_t *old_dir = current_directory;
+
+    // Switch to target directory temporarily
+    current_directory = dir;
+
+    // Map pages
+    uint32_t num_pages = (size + PAGE_SIZE - 1) / PAGE_SIZE;
+
+    for (uint32_t i = 0; i < num_pages; i++) {
+        uint32_t virt = virtual_addr + (i * PAGE_SIZE);
+        uint32_t phys = physical_addr + (i * PAGE_SIZE);
+
+        // Map with user mode flags
+        paging_map_page(virt, phys, PAGE_USER_MODE);
+    }
+
+    // Restore old directory
+    current_directory = old_dir;
+}

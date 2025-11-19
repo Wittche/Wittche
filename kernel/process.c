@@ -6,6 +6,7 @@
 #include "../include/string.h"
 #include "../include/timer.h"
 #include "../include/gdt.h"
+#include "../include/paging.h"
 
 // External assembly function to enter user mode
 extern void enter_usermode(void (*entry_point)(void), uint32_t user_stack);
@@ -57,6 +58,7 @@ void process_init(void) {
     idle_process->time_slice = 10;
     idle_process->total_time = 0;
     idle_process->next = NULL;
+    idle_process->page_directory = paging_get_directory();  // Use kernel page directory
 
     // Allocate stack for idle process
     idle_process->stack_size = 4096;  // 4KB stack
@@ -140,6 +142,9 @@ pid_t process_create(const char *name, void (*entry_point)(void), uint32_t stack
     process->msg_queue->head = 0;
     process->msg_queue->tail = 0;
     process->msg_queue->count = 0;
+
+    // Use kernel page directory for kernel mode processes
+    process->page_directory = paging_get_directory();
 
     // Setup stack and entry point
     uint32_t *stack = (uint32_t *)(process->stack_base + stack_size);
@@ -248,6 +253,15 @@ pid_t process_create_user_mode(const char *name, void (*entry_point)(void),
     // Set user stack top
     proc->user_stack += stack_size;
 
+    // Create separate page directory for user process
+    proc->page_directory = paging_create_user_directory();
+    if (!proc->page_directory) {
+        kprintf_color(MAKE_COLOR(COLOR_RED, COLOR_BLACK),
+                     "[PROCESS ERROR] Failed to create page directory\n");
+        process_kill(pid);
+        return 0;
+    }
+
     // Mark as user mode process
     proc->is_user_mode = 1;
 
@@ -320,6 +334,12 @@ void process_kill(pid_t pid) {
             if (process->msg_queue) {
                 kfree(process->msg_queue);
             }
+
+            // Free page directory if it's a user mode process
+            if (process->is_user_mode && process->page_directory) {
+                paging_free_directory(process->page_directory);
+            }
+
             kfree(process);
             process_table[i] = NULL;
             process_count_val--;
@@ -584,6 +604,11 @@ void process_schedule(void) {
         // Set TSS kernel stack for privilege level switching
         // This is used when user mode process makes syscall
         tss_set_kernel_stack(current_process->kernel_stack);
+
+        // Switch page directory if process has its own
+        if (current_process->page_directory) {
+            paging_switch_directory(current_process->page_directory);
+        }
 
         // Perform context switch
         process_switch(old_process, current_process);

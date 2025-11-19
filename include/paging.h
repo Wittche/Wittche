@@ -85,4 +85,17 @@ void paging_switch_directory(page_directory_t *dir);
 // Page fault handler
 void page_fault_handler(void);
 
+// Clone page directory (for new process)
+page_directory_t *paging_clone_directory(page_directory_t *src);
+
+// Create new page directory for user process
+page_directory_t *paging_create_user_directory(void);
+
+// Free page directory
+void paging_free_directory(page_directory_t *dir);
+
+// Map user code/data to process address space
+void paging_map_user_code(page_directory_t *dir, uint32_t virtual_addr,
+                          uint32_t physical_addr, uint32_t size);
+
 #endif // PAGING_H
