@@ -36,12 +36,6 @@ void idt_set_gate(uint8_t num, uint32_t handler, uint16_t selector, uint8_t flag
 // By default, IRQs 0-7 are mapped to interrupts 8-15
 // This conflicts with CPU exceptions, so we remap them to 32-47
 void pic_remap(void) {
-    uint8_t mask1, mask2;
-
-    // Save masks
-    mask1 = inb(PIC1_DATA);
-    mask2 = inb(PIC2_DATA);
-
     // Start initialization sequence
     outb(PIC1_COMMAND, 0x11);
     io_wait();

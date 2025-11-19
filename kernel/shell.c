@@ -365,36 +365,9 @@ void shell_process_command(char *command) {
 void shell_run(void) {
     char command_buffer[MAX_CMD_LENGTH];
 
-    // CRITICAL DEBUG: Direct VGA write to bypass any screen_write issues
-    __asm__ __volatile__("cli");  // Disable interrupts
-    volatile unsigned short *vga = (unsigned short *)0xB8000;
-    // Write at position 400 (row 5, col 0) to be visible
-    const char *msg = ">>>SHELL_RUN_ENTERED<<<";
-    for (int i = 0; msg[i] != '\0'; i++) {
-        vga[400 + i] = 0x4F00 | msg[i];  // White on red - very visible!
-    }
-    __asm__ __volatile__("sti");  // Re-enable interrupts
-
-    // Wait a bit so user can see the message
-    for (volatile int delay = 0; delay < 10000000; delay++);
-
-    screen_write_color("[DEBUG] ", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
-    screen_write("Entering shell_run() main loop\n");
-
     while (1) {
-        screen_write_color("[DEBUG] ", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
-        screen_write("Calling shell_prompt()...\n");
-
         shell_prompt();
-
-        screen_write_color("[DEBUG] ", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
-        screen_write("Prompt displayed, waiting for input...\n");
-
         keyboard_get_line(command_buffer, MAX_CMD_LENGTH);
-
-        screen_write_color("[DEBUG] ", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
-        screen_write("Got input, processing command...\n");
-
         shell_process_command(command_buffer);
     }
 }
