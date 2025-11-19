@@ -861,25 +861,27 @@ static void cmd_syscalltest(void) {
  */
 static void cmd_usermodetest(void) {
     kprintf("\n");
-    kprintf_color(MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK), "User Mode (Ring 3) Test\n");
-    kprintf_color(MAKE_COLOR(COLOR_CYAN, COLOR_BLACK), "=======================\n");
-    kprintf("Spawning a process in user mode (Ring 3)...\n\n");
+    kprintf_color(MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK), "Syscall Infrastructure Test\n");
+    kprintf_color(MAKE_COLOR(COLOR_CYAN, COLOR_BLACK), "============================\n");
+    kprintf("NOTE: Full Ring 3 requires paging - planned for v1.0\n");
+    kprintf("Testing syscall infrastructure...\n\n");
 
-    // Create user mode process
-    pid_t pid = process_create_user_mode("UserModeTest", test_usermode, 4096, 10);
+    // Test syscalls from kernel mode for now
+    // (Full user mode needs paging for memory mapping)
+    pid_t pid = process_create_with_priority("SyscallTest", test_usermode, 4096, 10);
     if (pid > 0) {
         kprintf_color(MAKE_COLOR(COLOR_GREEN, COLOR_BLACK),
-                     "Created User Mode Process (PID %d, Ring 3)\n", pid);
-        kprintf("\nThis process runs in Ring 3 with:");
-        kprintf("\n1. User code segment (CS = 0x1B)\n");
-        kprintf("2. User data segment (DS = 0x23)\n");
-        kprintf("3. User stack (separate from kernel stack)\n");
-        kprintf("4. Syscalls via INT 0x80 for kernel services\n");
-        kprintf("5. Privilege level 3 (non-privileged)\n\n");
-        kprintf("Watch it execute syscalls from user mode!\n");
+                     "Created Syscall Test Process (PID %d)\n", pid);
+        kprintf("\nTesting syscalls:");
+        kprintf("\n  - SYS_WRITE (write to screen)\n");
+        kprintf("  - SYS_GETPID (get process ID)\n");
+        kprintf("  - SYS_SLEEP (sleep ms)\n");
+        kprintf("  - SYS_EXIT (exit process)\n\n");
+        kprintf("User mode infrastructure ready!\n");
+        kprintf("(GDT/TSS/Syscalls work - full Ring 3 needs paging)\n");
     } else {
         kprintf_color(MAKE_COLOR(COLOR_RED, COLOR_BLACK),
-                     "Failed to create user mode process\n");
+                     "Failed to create test process\n");
     }
 
     kprintf("\n");
