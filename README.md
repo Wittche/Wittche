@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-0.7.0-blue.svg)
+![Version](https://img.shields.io/badge/version-0.8.0-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Platform](https://img.shields.io/badge/platform-x86-orange.svg)
 ![Language](https://img.shields.io/badge/language-C%20%7C%20Assembly-yellow.svg)
@@ -53,12 +53,15 @@ This project was developed by artificial intelligence without knowing any code.
 - ✅ **Paging**: Virtual memory with identity mapping
 - ✅ **Memory Commands**: mem, meminfo, memtest
 
-### 🔄 Process Management (v0.7)
+### 🔄 Process Management (v0.7-v0.8)
 - ✅ **Process Control Block (PCB)**: Full process state tracking
-- ✅ **Preemptive Multitasking**: Round-robin scheduler with 10ms time slices
+- ✅ **Preemptive Multitasking**: Priority-based scheduler with 10ms time slices
+- ✅ **Priority Scheduling**: 256 priority levels (0-255, higher = more CPU)
+- ✅ **Sleep/Wake System**: Process sleep with ±1ms precision, zero CPU usage
 - ✅ **Context Switching**: Assembly-level full register save/restore
-- ✅ **Process Commands**: ps (list processes), testproc (demo multitasking)
+- ✅ **Process Commands**: ps, testproc, sleeptest, nice, kill
 - ✅ **64 Concurrent Processes**: Maximum process support
+- ✅ **Complete Lifecycle Control**: Create, monitor, modify priority, sleep, terminate
 
 ### 💻 Shell
 - ✅ **Interactive Shell**: Full-featured command-line interface
@@ -66,7 +69,7 @@ This project was developed by artificial intelligence without knowing any code.
 - ✅ **Command History**: Last 10 commands tracked
 - ✅ **Tab Completion**: Auto-complete commands with Tab key
 - ✅ **Arrow Key Support**: Navigate and edit command line
-- ✅ **Built-in Commands**: help, clear/cls, about, ver, mem, meminfo, memtest, ps, testproc, echo, color, uptime, history, banner
+- ✅ **Built-in Commands**: help, clear/cls, about, ver, mem, meminfo, memtest, ps, testproc, sleeptest, nice, kill, echo, color, uptime, history, banner
 - ✅ **Colorful Output**: Colored command output
 - ✅ **Memory Inspector**: View memory layout and statistics
 
@@ -125,6 +128,7 @@ You should see the Wittche OS boot screen and shell prompt!
 
 ## 📖 Documentation
 
+- **[Release Notes v0.8.0](.github/RELEASE_v0.8.0.md)** - Advanced Process Features release
 - **[Release Notes v0.7.0](.github/RELEASE_v0.7.0.md)** - Process Management release
 - **[Release Notes v0.6.0](.github/RELEASE_v0.6.0.md)** - Memory Management release
 - **[Release Notes v0.5.0](.github/RELEASE_v0.5.0.md)** - Enhanced UX release
@@ -135,19 +139,25 @@ You should see the Wittche OS boot screen and shell prompt!
 
 ## 📋 Release Notes
 
-### Latest: v0.7.0 - "Process Manager" (November 19, 2024)
-🔄 **Preemptive Multitasking is Here!**
+### Latest: v0.8.0 - "Advanced Process Features" (November 19, 2024)
+🎯 **Priority Scheduling, Sleep/Wake, and Process Control!**
 
 **Key Features:**
-- Process Control Block (PCB) system with full lifecycle management
-- Round-robin preemptive scheduler with 10ms time slices
-- Assembly-level context switching (<0.1ms switch time)
-- New commands: `ps` (list processes), `testproc` (demo multitasking)
-- Support for up to 64 concurrent processes
+- Priority-based scheduling with 256 priority levels (0-255)
+- Sleep/wake system with ±1ms precision and zero CPU usage
+- Complete process control: nice (priority), kill (terminate)
+- New commands: `nice`, `kill`, `sleeptest`
+- Enhanced process management with full lifecycle control
 
-**[Read Full Release Notes →](.github/RELEASE_v0.7.0.md)**
+**[Read Full Release Notes →](.github/RELEASE_v0.8.0.md)**
 
 ### Previous Releases
+
+**v0.7.0 - "Process Manager"** (November 2024)
+- Process Control Block (PCB) and multitasking
+- Preemptive scheduler with context switching
+- New commands: ps, testproc
+- **[Full Notes →](.github/RELEASE_v0.7.0.md)**
 
 **v0.6.0 - "Memory Manager"** (November 2024)
 - Physical Memory Manager (PMM) with bitmap allocator
@@ -206,7 +216,7 @@ Some ideas:
 
 ## 🗺️ Roadmap
 
-### Current Version: v0.7.0 ✅
+### Current Version: v0.8.0 ✅
 
 See our [ROADMAP.md](ROADMAP.md) for detailed future plans!
 
@@ -228,13 +238,13 @@ See our [ROADMAP.md](ROADMAP.md) for detailed future plans!
 - ✅ Context switching
 - ✅ Multitasking support
 
-### Upcoming Features
+**v0.8** - Advanced Process Features ✅
+- ✅ Priority-based scheduling (256 levels)
+- ✅ Sleep/wake functionality (±1ms precision)
+- ✅ Process termination (kill command)
+- ✅ Dynamic priority adjustment (nice command)
 
-**v0.8** - Advanced Process Features
-- Process priorities and multi-level scheduling
-- Sleep/wake functionality
-- Inter-Process Communication (IPC)
-- Signal handling
+### Upcoming Features
 
 **v0.9** - User Mode & System Calls
 - Ring 3 user processes
@@ -407,12 +417,14 @@ Total processes: 4
 ## 📊 Statistics
 
 - **Language**: C (75%), Assembly (20%), Makefile (5%)
-- **Lines of Code**: ~5,500+
+- **Lines of Code**: ~6,000+
 - **Kernel Modules**: 15 modules (screen, idt, isr, keyboard, timer, string, kprintf, pmm, heap, paging, process, shell)
-- **Shell Commands**: 15+ built-in commands
+- **Shell Commands**: 18 built-in commands
 - **Interrupts**: 48 handlers (32 ISR + 16 IRQ)
-- **Kernel Size**: ~34 KB
+- **Kernel Size**: ~40 KB
 - **Max Processes**: 64 concurrent processes
+- **Priority Levels**: 256 (0-255)
+- **Sleep Precision**: ±1ms
 - **Context Switch**: <0.1ms
 - **Scheduler Overhead**: ~1%
 
