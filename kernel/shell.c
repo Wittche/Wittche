@@ -3,6 +3,7 @@
 #include "../include/string.h"
 #include "../include/keyboard.h"
 #include "../include/timer.h"
+#include "../include/kprintf.h"
 #include "../include/types.h"
 
 // Command history
@@ -18,7 +19,7 @@ static int history_count = 0;
 void shell_display_banner(void) {
     screen_write_color("\n", DEFAULT_COLOR);
     screen_write_color("===========================================\n", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
-    screen_write_color(" Wittche Operating System v0.4\n", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
+    screen_write_color(" Wittche Operating System v0.5\n", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
     screen_write_color("===========================================\n", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
     screen_write("\n");
     screen_write("Welcome to Wittche OS!\n");
@@ -44,8 +45,14 @@ static void cmd_help(void) {
     screen_write("      - Display this help message\n");
     screen_write_color("  clear", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
     screen_write("     - Clear the screen\n");
+    screen_write_color("  cls", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
+    screen_write("       - Alias for clear\n");
     screen_write_color("  about", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
     screen_write("     - Show system information\n");
+    screen_write_color("  ver", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
+    screen_write("       - Show OS version\n");
+    screen_write_color("  mem", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
+    screen_write("       - Display memory information\n");
     screen_write_color("  echo", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
     screen_write("      - Echo a message\n");
     screen_write_color("  color", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
@@ -71,7 +78,7 @@ static void cmd_clear(void) {
  */
 static void cmd_about(void) {
     screen_write("\n");
-    screen_write_color("Wittche Operating System v0.4\n", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
+    screen_write_color("Wittche Operating System v0.5\n", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
     screen_write_color("===============================\n", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
     screen_write("\n");
     screen_write("A simple x86 operating system for educational purposes.\n\n");
@@ -83,6 +90,7 @@ static void cmd_about(void) {
     screen_write("  - PS/2 keyboard driver\n");
     screen_write("  - VGA text mode with hardware cursor\n");
     screen_write("  - Proper screen scrolling\n");
+    screen_write("  - Printf-style formatted output (kprintf)\n");
     screen_write("  - Interactive shell with command parsing\n");
     screen_write("\n");
 
@@ -200,6 +208,67 @@ static void cmd_banner(void) {
 }
 
 /**
+ * Version command - displays OS version info
+ */
+static void cmd_ver(void) {
+    kprintf("\n");
+    kprintf_color(MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK), "Wittche OS Version Information\n");
+    kprintf_color(MAKE_COLOR(COLOR_CYAN, COLOR_BLACK), "==============================\n");
+    kprintf("\n");
+    kprintf("  Version:     ");
+    kprintf_color(MAKE_COLOR(COLOR_CYAN, COLOR_BLACK), "0.5.0\n");
+    kprintf("  Codename:    ");
+    kprintf_color(MAKE_COLOR(COLOR_CYAN, COLOR_BLACK), "Enhanced UX\n");
+    kprintf("  Build Date:  ");
+    kprintf_color(MAKE_COLOR(COLOR_CYAN, COLOR_BLACK), "2024-11\n");
+    kprintf("  Arch:        ");
+    kprintf_color(MAKE_COLOR(COLOR_CYAN, COLOR_BLACK), "x86 (32-bit)\n");
+    kprintf("  License:     ");
+    kprintf_color(MAKE_COLOR(COLOR_CYAN, COLOR_BLACK), "MIT\n");
+    kprintf("\n");
+}
+
+/**
+ * Memory command - displays memory layout and info
+ */
+static void cmd_mem(void) {
+    kprintf("\n");
+    kprintf_color(MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK), "Memory Layout\n");
+    kprintf_color(MAKE_COLOR(COLOR_CYAN, COLOR_BLACK), "=============\n");
+    kprintf("\n");
+
+    kprintf_color(MAKE_COLOR(COLOR_GREEN, COLOR_BLACK), "Kernel Memory Map:\n");
+    kprintf("  Bootloader:      %p (512 bytes)\n", 0x7C00);
+    kprintf("  Kernel Code:     %p (loaded here)\n", 0x10000);
+    kprintf("  Stack:           %p (grows downward)\n", 0x90000);
+    kprintf("  VGA Text Buffer: %p (80x25 chars)\n", 0xB8000);
+    kprintf("\n");
+
+    kprintf_color(MAKE_COLOR(COLOR_GREEN, COLOR_BLACK), "Segment Registers:\n");
+
+    uint32_t ds, es, fs, gs, ss;
+    __asm__ __volatile__("mov %%ds, %0" : "=r"(ds));
+    __asm__ __volatile__("mov %%es, %0" : "=r"(es));
+    __asm__ __volatile__("mov %%fs, %0" : "=r"(fs));
+    __asm__ __volatile__("mov %%gs, %0" : "=r"(gs));
+    __asm__ __volatile__("mov %%ss, %0" : "=r"(ss));
+
+    kprintf("  DS (Data):       0x%X\n", ds);
+    kprintf("  ES (Extra):      0x%X\n", es);
+    kprintf("  FS:              0x%X\n", fs);
+    kprintf("  GS:              0x%X\n", gs);
+    kprintf("  SS (Stack):      0x%X\n", ss);
+    kprintf("\n");
+
+    kprintf_color(MAKE_COLOR(COLOR_GREEN, COLOR_BLACK), "Memory Statistics:\n");
+    kprintf("  Available:       ");
+    kprintf_color(MAKE_COLOR(COLOR_CYAN, COLOR_BLACK), "Managed by kernel\n");
+    kprintf("  Note:            ");
+    kprintf_color(MAKE_COLOR(COLOR_DARK_GREY, COLOR_BLACK), "Dynamic memory allocator coming soon!\n");
+    kprintf("\n");
+}
+
+/**
  * Add command to history
  */
 static void shell_add_history(const char *command) {
@@ -262,10 +331,14 @@ void shell_process_command(char *command) {
     // Execute command
     if (strcmp(cmd, "help") == 0) {
         cmd_help();
-    } else if (strcmp(cmd, "clear") == 0) {
+    } else if (strcmp(cmd, "clear") == 0 || strcmp(cmd, "cls") == 0) {
         cmd_clear();
     } else if (strcmp(cmd, "about") == 0) {
         cmd_about();
+    } else if (strcmp(cmd, "ver") == 0) {
+        cmd_ver();
+    } else if (strcmp(cmd, "mem") == 0) {
+        cmd_mem();
     } else if (strcmp(cmd, "echo") == 0) {
         cmd_echo(full_args);
     } else if (strcmp(cmd, "color") == 0) {

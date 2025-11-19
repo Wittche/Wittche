@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-0.4-blue.svg)
+![Version](https://img.shields.io/badge/version-0.5-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Platform](https://img.shields.io/badge/platform-x86-orange.svg)
 ![Language](https://img.shields.io/badge/language-C%20%7C%20Assembly-yellow.svg)
@@ -51,8 +51,9 @@ This project was developed by artificial intelligence without knowing any code.
 - ✅ **Interactive Shell**: Full-featured command-line interface
 - ✅ **Command Parser**: Argument parsing and tokenization
 - ✅ **Command History**: Last 10 commands tracked
-- ✅ **Built-in Commands**: help, clear, about, echo, color, uptime, history, banner
+- ✅ **Built-in Commands**: help, clear/cls, about, ver, mem, echo, color, uptime, history, banner
 - ✅ **Colorful Output**: Colored command output
+- ✅ **Memory Inspector**: View memory layout and segment registers
 
 ### ⏱️ Timing
 - ✅ **PIT (Programmable Interval Timer)**: 1000 Hz timer
@@ -63,6 +64,7 @@ This project was developed by artificial intelligence without knowing any code.
 - ✅ **String Library**: strlen, strcmp, strcpy, strcat, split, trim, etc.
 - ✅ **Memory Functions**: memset, memcpy, memcmp
 - ✅ **Conversion Functions**: atoi, itoa (various bases)
+- ✅ **Printf-style Output**: kprintf() with format specifiers (%d, %x, %s, %p, etc.)
 - ✅ **Modular Design**: Clean, separated module structure
 
 ## 🚀 Getting Started

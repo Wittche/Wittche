@@ -2,7 +2,7 @@
 
 This document outlines the development roadmap for Wittche OS. Our goal is to create an educational operating system that helps people learn OS development concepts.
 
-## Current Version: v0.4
+## Previous Version: v0.4
 
 **Release Date**: November 2024
 
@@ -32,12 +32,12 @@ This document outlines the development roadmap for Wittche OS. Our goal is to cr
 
 ---
 
-## Version 0.5 (Next Release)
+## Current Version: v0.5 🎉
 
-**Target**: Q1 2025
-**Focus**: Enhanced User Experience & Input
+**Release Date**: November 2024
+**Focus**: Enhanced User Experience & Printf-style Formatting
 
-### Planned Features
+### Completed Features ✅
 
 #### Better Line Editing
 - [ ] **Cursor movement** (left/right arrows)
@@ -54,25 +54,26 @@ This document outlines the development roadmap for Wittche OS. Our goal is to cr
 - [ ] **Alt** key support
 
 #### Printf-style Formatting
-- [ ] `kprintf()` function
-- [ ] Format specifiers: %d, %x, %s, %c
-- [ ] Width and padding support
-- [ ] Color formatting codes
+- [x] `kprintf()` function
+- [x] Format specifiers: %d, %i, %u, %x, %X, %s, %c, %p, %%
+- [x] Color formatting with `kprintf_color()`
+- [ ] Width and padding support (future)
 
 #### Additional Shell Commands
-- [ ] `time` - Show current uptime in detail
-- [ ] `cls` - Alias for clear
-- [ ] `ver` - Show version info
-- [ ] `mem` - Memory information (preparation for v0.6)
+- [x] `cls` - Alias for clear
+- [x] `ver` - Show version info with codename
+- [x] `mem` - Memory layout and segment register viewer
 
-### Issues to Address
-- Improve backspace handling at line start
-- Better error messages for invalid commands
-- Command line length limit indicator
+### In Progress 🚧
+
+### Future Enhancements (for v0.5.x)
+- [ ] Improve backspace handling at line start
+- [ ] Better error messages for invalid commands
+- [ ] Command line length limit indicator
 
 ---
 
-## Version 0.6
+## Version 0.6 (Next Release)
 
 **Target**: Q2 2025
 **Focus**: Memory Management
