@@ -57,7 +57,7 @@ void isr_handler(struct registers *regs) {
     if (regs->int_no < 32) {
         // Special handling for page fault (interrupt 14)
         if (regs->int_no == 14) {
-            page_fault_handler();
+            page_fault_handler(regs->err_code);
             return;  // Page fault handler will halt if needed
         }
 

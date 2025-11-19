@@ -86,8 +86,8 @@ page_directory_t *paging_get_directory(void);
 // Switch page directory
 void paging_switch_directory(page_directory_t *dir);
 
-// Page fault handler
-void page_fault_handler(void);
+// Page fault handler (called from ISR with error code)
+void page_fault_handler(uint32_t error_code);
 
 // Clone page directory (for new process)
 page_directory_t *paging_clone_directory(page_directory_t *src);

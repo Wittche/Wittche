@@ -4,6 +4,7 @@
 #include "../include/screen.h"
 #include "../include/kprintf.h"
 #include "../include/string.h"
+#include "../include/process.h"
 
 // Kernel page directory (aligned to 4KB)
 static page_directory_t kernel_directory __attribute__((aligned(4096)));
@@ -248,16 +249,78 @@ void paging_init(void) {
 
 /**
  * Page fault handler
+ * Error code format:
+ *   Bit 0 (P)    - 0: Page not present, 1: Protection violation
+ *   Bit 1 (W/R)  - 0: Read access, 1: Write access
+ *   Bit 2 (U/S)  - 0: Kernel mode, 1: User mode
+ *   Bit 3 (RSVD) - 1: Reserved bit violation
+ *   Bit 4 (I/D)  - 1: Instruction fetch
  */
-void page_fault_handler(void) {
+void page_fault_handler(uint32_t error_code) {
     // Read CR2 to get faulting address
     uint32_t faulting_address;
     __asm__ __volatile__("mov %%cr2, %0" : "=r"(faulting_address));
 
-    screen_write_color("\n[PAGE FAULT] ", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
-    kprintf("at address 0x%x\n", faulting_address);
+    // Parse error code
+    int present = error_code & 0x1;           // Page present?
+    int write = (error_code & 0x2) >> 1;      // Write access?
+    int user = (error_code & 0x4) >> 2;       // User mode?
+    int reserved = (error_code & 0x8) >> 3;   // Reserved bit?
+    int instr_fetch = (error_code & 0x10) >> 4; // Instruction fetch?
 
-    // For now, just halt
+    // Display page fault information
+    screen_write_color("\n\n=== PAGE FAULT ===\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
+
+    kprintf_color(MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK), "Fault Address: 0x%x\n", faulting_address);
+    kprintf("Error Code:    0x%x\n\n", error_code);
+
+    // Fault type
+    kprintf_color(MAKE_COLOR(COLOR_CYAN, COLOR_BLACK), "Fault Details:\n");
+
+    if (present) {
+        kprintf("  - Page protection violation\n");
+    } else {
+        kprintf("  - Page not present\n");
+    }
+
+    if (write) {
+        kprintf("  - Write access\n");
+    } else {
+        if (instr_fetch) {
+            kprintf("  - Instruction fetch\n");
+        } else {
+            kprintf("  - Read access\n");
+        }
+    }
+
+    if (user) {
+        kprintf("  - User mode (Ring 3)\n");
+    } else {
+        kprintf("  - Kernel mode (Ring 0)\n");
+    }
+
+    if (reserved) {
+        kprintf("  - Reserved bit violation\n");
+    }
+
+    // Show page directory/table info
+    uint32_t pd_index = faulting_address >> 22;
+    uint32_t pt_index = (faulting_address >> 12) & 0x3FF;
+    kprintf("\nPage Directory Index: %d\n", pd_index);
+    kprintf("Page Table Index:     %d\n", pt_index);
+
+    // Show process info if available
+    process_t *proc = process_current();
+    if (proc) {
+        kprintf_color(MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK), "\nCurrent Process:\n");
+        kprintf("  PID:  %d\n", proc->pid);
+        kprintf("  Name: %s\n", proc->name);
+        kprintf("  Mode: %s\n", proc->is_user_mode ? "User (Ring 3)" : "Kernel (Ring 0)");
+    }
+
+    kprintf_color(MAKE_COLOR(COLOR_RED, COLOR_BLACK), "\nSystem halted.\n");
+
+    // Halt the system
     __asm__ __volatile__("cli; hlt");
 }
 
