@@ -20,9 +20,14 @@ OBJS = $(BUILD_DIR)/kernel_entry.o \
        $(BUILD_DIR)/kernel.o \
        $(BUILD_DIR)/screen.o \
        $(BUILD_DIR)/string.o \
+       $(BUILD_DIR)/gdt.o \
+       $(BUILD_DIR)/gdt_asm.o \
        $(BUILD_DIR)/idt.o \
        $(BUILD_DIR)/isr.o \
        $(BUILD_DIR)/interrupt.o \
+       $(BUILD_DIR)/syscall.o \
+       $(BUILD_DIR)/syscall_asm.o \
+       $(BUILD_DIR)/userlib.o \
        $(BUILD_DIR)/pmm.o \
        $(BUILD_DIR)/heap.o \
        $(BUILD_DIR)/paging.o \
@@ -59,6 +64,14 @@ $(BUILD_DIR)/%.o: $(KERNEL_DIR)/%.c | $(BUILD_DIR)
 
 # Build ASM object files
 $(BUILD_DIR)/%.o: $(KERNEL_DIR)/%.asm | $(BUILD_DIR)
+	$(ASM) $(ASM_FLAGS) $< -o $@
+
+# Special rule for gdt.asm -> gdt_asm.o
+$(BUILD_DIR)/gdt_asm.o: $(KERNEL_DIR)/gdt.asm | $(BUILD_DIR)
+	$(ASM) $(ASM_FLAGS) $< -o $@
+
+# Special rule for syscall.asm -> syscall_asm.o
+$(BUILD_DIR)/syscall_asm.o: $(KERNEL_DIR)/syscall.asm | $(BUILD_DIR)
 	$(ASM) $(ASM_FLAGS) $< -o $@
 
 # Link kernel

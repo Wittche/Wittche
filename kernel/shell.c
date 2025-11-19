@@ -17,6 +17,7 @@ extern void test_process_c(void);
 extern void test_process_sleep(void);
 extern void ipc_producer(void);
 extern void ipc_consumer(void);
+extern void test_syscall(void);
 
 // Command history
 #define MAX_HISTORY 10
@@ -41,6 +42,7 @@ static const char *available_commands[] = {
     "nice",
     "kill",
     "ipctest",
+    "syscalltest",
     "echo",
     "color",
     "uptime",
@@ -105,6 +107,8 @@ static void cmd_help(void) {
     screen_write("      - Terminate a process\n");
     screen_write_color("  ipctest", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
     screen_write("   - Test Inter-Process Communication\n");
+    screen_write_color("  syscalltest", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
+    screen_write(" - Test system calls (INT 0x80)\n");
     screen_write_color("  echo", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
     screen_write("      - Echo a message\n");
     screen_write_color("  color", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
@@ -818,6 +822,36 @@ static void cmd_ipctest(void) {
 }
 
 /**
+ * syscalltest command - test system calls
+ * Creates a process that tests INT 0x80 syscalls
+ */
+static void cmd_syscalltest(void) {
+    kprintf("\n");
+    kprintf_color(MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK), "System Call Test\n");
+    kprintf_color(MAKE_COLOR(COLOR_CYAN, COLOR_BLACK), "================\n");
+    kprintf("Spawning a process to test system calls...\n\n");
+
+    // Create syscall test process
+    pid_t pid = process_create_with_priority("SyscallTest", test_syscall, 4096, 10);
+    if (pid > 0) {
+        kprintf_color(MAKE_COLOR(COLOR_GREEN, COLOR_BLACK),
+                     "Created Syscall Test Process (PID %d)\n", pid);
+        kprintf("\nThis process will test:\n");
+        kprintf("1. SYS_GETPID - Get process ID\n");
+        kprintf("2. SYS_WRITE - Write to screen\n");
+        kprintf("3. SYS_SLEEP - Sleep for milliseconds\n");
+        kprintf("4. SYS_YIELD - Yield CPU\n");
+        kprintf("5. SYS_EXIT - Exit process\n\n");
+        kprintf("Watch the output to see syscalls in action!\n");
+    } else {
+        kprintf_color(MAKE_COLOR(COLOR_RED, COLOR_BLACK),
+                     "Failed to create syscall test process\n");
+    }
+
+    kprintf("\n");
+}
+
+/**
  * Add command to history
  */
 static void shell_add_history(const char *command) {
@@ -904,6 +938,8 @@ void shell_process_command(char *command) {
         cmd_kill(full_args);
     } else if (strcmp(cmd, "ipctest") == 0) {
         cmd_ipctest();
+    } else if (strcmp(cmd, "syscalltest") == 0) {
+        cmd_syscalltest();
     } else if (strcmp(cmd, "echo") == 0) {
         cmd_echo(full_args);
     } else if (strcmp(cmd, "color") == 0) {

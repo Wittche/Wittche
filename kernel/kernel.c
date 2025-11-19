@@ -7,7 +7,9 @@
 
 #include "../include/types.h"
 #include "../include/screen.h"
+#include "../include/gdt.h"
 #include "../include/idt.h"
+#include "../include/syscall.h"
 #include "../include/pmm.h"
 #include "../include/heap.h"
 #include "../include/paging.h"
@@ -16,6 +18,7 @@
 #include "../include/timer.h"
 #include "../include/shell.h"
 #include "../include/string.h"
+#include "../include/userlib.h"
 
 /**
  * Test process A - prints message periodically
@@ -204,6 +207,50 @@ void ipc_consumer(void) {
 }
 
 /**
+ * Syscall Test Process - demonstrates system call usage
+ */
+void test_syscall(void) {
+    screen_write_color("[Syscall Test] ", MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
+    screen_write("Starting system call test\n");
+
+    // Test SYS_GETPID
+    int my_pid = getpid();
+    screen_write_color("[Syscall Test] ", MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
+    screen_write("My PID from syscall: ");
+    screen_write_dec(my_pid);
+    screen_write("\n");
+
+    // Test SYS_WRITE
+    const char *msg1 = "[Syscall Test] Testing SYS_WRITE syscall...\n";
+    write(1, msg1, strlen(msg1));
+
+    const char *msg2 = "[Syscall Test] Hello from userspace syscall!\n";
+    write(1, msg2, strlen(msg2));
+
+    // Test SYS_SLEEP
+    screen_write_color("[Syscall Test] ", MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
+    screen_write("Sleeping for 1000ms using SYS_SLEEP...\n");
+    sleep_ms(1000);
+
+    screen_write_color("[Syscall Test] ", MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
+    screen_write("Woke up! Sleep syscall works.\n");
+
+    // Test SYS_YIELD
+    screen_write_color("[Syscall Test] ", MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
+    screen_write("Testing SYS_YIELD...\n");
+    yield();
+
+    screen_write_color("[Syscall Test] ", MAKE_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
+    screen_write("Back from yield. All syscalls working!\n");
+
+    // Test SYS_EXIT
+    screen_write_color("[Syscall Test] ", MAKE_COLOR(COLOR_GREEN, COLOR_BLACK));
+    screen_write("All tests passed! Exiting with SYS_EXIT...\n");
+
+    exit(0);  // This will terminate the process
+}
+
+/**
  * Main kernel entry point
  * Called from kernel_entry.asm after bootloader hands control
  */
@@ -217,8 +264,14 @@ void kernel_main(void) {
     screen_write_hex(0x10000);
     screen_write("\n");
 
+    // Initialize Global Descriptor Table (GDT)
+    gdt_init();
+
     // Initialize Interrupt Descriptor Table
     idt_init();
+
+    // Initialize system calls (INT 0x80)
+    syscall_init();
 
     // Initialize memory management
     pmm_init();     // Physical memory manager
