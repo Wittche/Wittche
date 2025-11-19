@@ -17,13 +17,13 @@ start:
     call print_string
 
     ; Load kernel from disk
-    ; We'll load sectors 2-30 (kernel) to 0x1000:0x0000
+    ; We'll load sectors 2-40 (kernel) to 0x1000:0x0000
     mov ah, 0x02        ; BIOS read sector function
-    mov al, 30          ; Number of sectors to read (increased for larger kernel)
+    mov al, 40          ; Number of sectors to read (20KB)
     mov ch, 0           ; Cylinder 0
     mov cl, 2           ; Start from sector 2 (sector 1 is boot sector)
     mov dh, 0           ; Head 0
-    mov dl, 0x00        ; Floppy disk (0x80 for hard drive)
+    mov dl, 0x80        ; Hard drive (use 0x00 for floppy)
     mov bx, 0x1000      ; ES:BX = 0x1000:0x0000
     mov es, bx
     xor bx, bx
