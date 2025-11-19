@@ -108,21 +108,7 @@ protected_mode:
     mov ss, ax
     mov esp, 0x90000    ; Set up stack
 
-    ; Write debug message to VGA (0xB8000) before jumping
-    mov edi, 0xB8000    ; VGA text buffer
-    mov al, 'P'         ; Character
-    mov ah, 0x0F        ; White on black
-    mov [edi], ax
-    mov al, 'M'
-    mov [edi+2], ax
-    mov al, 'O'
-    mov [edi+4], ax
-    mov al, 'K'
-    mov [edi+6], ax
-    mov al, '!'
-    mov [edi+8], ax
-
-    ; Jump to kernel
+    ; Jump to kernel (no debug output - kernel will handle all display)
     call 0x10000        ; Call kernel (will return here if kernel returns)
 
     ; If we get here, kernel returned - hang
