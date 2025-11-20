@@ -26,4 +26,13 @@ SECTIONS
     .bss : {
         *(.bss)
     }
+
+    /* Discard unwanted sections (debug info, exception handling, etc.) */
+    /DISCARD/ : {
+        *(.eh_frame)
+        *(.eh_frame_hdr)
+        *(.note*)
+        *(.comment)
+        *(.debug*)
+    }
 }
