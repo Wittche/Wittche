@@ -904,83 +904,72 @@ static void cmd_usermodetest(void) {
  * rdinfo command - display RAM disk information
  */
 static void cmd_rdinfo(void) {
-    screen_write("\n");
-    screen_write_color("RAM Disk Information\n", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
-    screen_write_color("====================\n", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
-    screen_write("\n");
+    kprintf("\n");
+    kprintf_color(MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK), "RAM Disk Information\n");
+    kprintf_color(MAKE_COLOR(COLOR_CYAN, COLOR_BLACK), "====================\n");
+    kprintf("\n");
 
     if (!ramdisk_is_initialized()) {
-        screen_write_color("RAM Disk is NOT initialized!\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
-        screen_write("\n");
+        kprintf_color(MAKE_COLOR(COLOR_RED, COLOR_BLACK), "RAM Disk is NOT initialized!\n");
+        kprintf("\n");
         return;
     }
 
     ramdisk_t *rd = ramdisk_get_info();
 
-    screen_write_color("Status:\n", MAKE_COLOR(COLOR_GREEN, COLOR_BLACK));
-    screen_write("  Initialized:     ");
-    screen_write_color("YES\n", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
-    screen_write("  Base Address:    ");
-    screen_write_hex((uint32_t)rd->data);
-    screen_write("\n\n");
+    kprintf_color(MAKE_COLOR(COLOR_GREEN, COLOR_BLACK), "Status:\n");
+    kprintf("  Initialized:     ");
+    kprintf_color(MAKE_COLOR(COLOR_CYAN, COLOR_BLACK), "YES\n");
+    kprintf("  Base Address:    0x%X\n\n", (uint32_t)rd->data);
 
-    screen_write_color("Configuration:\n", MAKE_COLOR(COLOR_GREEN, COLOR_BLACK));
-    screen_write("  Total Size:      ");
-    screen_write_dec(rd->size);
-    screen_write(" bytes (");
-    screen_write_dec(rd->size / 1024);
-    screen_write(" KB / ");
-    screen_write_dec(rd->size / (1024 * 1024));
-    screen_write(" MB)\n");
-    screen_write("  Block Size:      ");
-    screen_write_dec(rd->block_size);
-    screen_write(" bytes\n");
-    screen_write("  Block Count:     ");
-    screen_write_dec(rd->block_count);
-    screen_write(" blocks\n\n");
+    kprintf_color(MAKE_COLOR(COLOR_GREEN, COLOR_BLACK), "Configuration:\n");
+    kprintf("  Total Size:      %u bytes (%u KB / %u MB)\n",
+            rd->size, rd->size / 1024, rd->size / (1024 * 1024));
+    kprintf("  Block Size:      %u bytes\n", rd->block_size);
+    kprintf("  Block Count:     %u blocks\n\n", rd->block_count);
 
-    screen_write_color("Technical Details:\n", MAKE_COLOR(COLOR_GREEN, COLOR_BLACK));
-    screen_write("  Type:            Virtual disk in RAM\n");
-    screen_write("  Speed:           Memory speed (very fast)\n");
-    screen_write("  Volatile:        Yes (data lost on reboot)\n");
-    screen_write("  Purpose:         Foundation for file system\n");
-    screen_write("\n");
+    kprintf_color(MAKE_COLOR(COLOR_GREEN, COLOR_BLACK), "Technical Details:\n");
+    kprintf("  Type:            Virtual disk in RAM\n");
+    kprintf("  Speed:           Memory speed (very fast)\n");
+    kprintf("  Volatile:        Yes (data lost on reboot)\n");
+    kprintf("  Purpose:         Foundation for file system\n");
+    kprintf("\n");
 }
 
 /**
  * rdformat command - format RAM disk
  */
 static void cmd_rdformat(void) {
-    screen_write("\n");
-    screen_write_color("RAM Disk Format\n", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
-    screen_write_color("===============\n", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
-    screen_write("\n");
+    kprintf("\n");
+    kprintf_color(MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK), "RAM Disk Format\n");
+    kprintf_color(MAKE_COLOR(COLOR_CYAN, COLOR_BLACK), "===============\n");
+    kprintf("\n");
 
     if (!ramdisk_is_initialized()) {
-        screen_write_color("Error: RAM Disk is not initialized!\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
-        screen_write("\n");
+        kprintf_color(MAKE_COLOR(COLOR_RED, COLOR_BLACK), "Error: RAM Disk is not initialized!\n");
+        kprintf("\n");
         return;
     }
 
-    screen_write("Formatting RAM disk (clearing all data)...\n");
+    kprintf("Formatting RAM disk (clearing all data)...\n");
     ramdisk_format();
-    screen_write_color("RAM Disk formatted successfully!\n", MAKE_COLOR(COLOR_GREEN, COLOR_BLACK));
-    screen_write("All blocks cleared to zero.\n");
-    screen_write("\n");
+    kprintf_color(MAKE_COLOR(COLOR_GREEN, COLOR_BLACK), "RAM Disk formatted successfully!\n");
+    kprintf("All blocks cleared to zero.\n");
+    kprintf("\n");
 }
 
 /**
  * ramdisk command - test RAM disk read/write
  */
 static void cmd_ramdisk(void) {
-    screen_write("\n");
-    screen_write_color("RAM Disk Test\n", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
-    screen_write_color("=============\n", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
-    screen_write("\n");
+    kprintf("\n");
+    kprintf_color(MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK), "RAM Disk Test\n");
+    kprintf_color(MAKE_COLOR(COLOR_CYAN, COLOR_BLACK), "=============\n");
+    kprintf("\n");
 
     if (!ramdisk_is_initialized()) {
-        screen_write_color("Error: RAM Disk is not initialized!\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
-        screen_write("\n");
+        kprintf_color(MAKE_COLOR(COLOR_RED, COLOR_BLACK), "Error: RAM Disk is not initialized!\n");
+        kprintf("\n");
         return;
     }
 
@@ -989,37 +978,37 @@ static void cmd_ramdisk(void) {
     uint8_t read_buffer[512];
 
     // Test 1: Write test pattern to block 0
-    screen_write_color("Test 1: Write Pattern to Block 0\n", MAKE_COLOR(COLOR_GREEN, COLOR_BLACK));
-    screen_write("  Preparing test data...\n");
+    kprintf_color(MAKE_COLOR(COLOR_GREEN, COLOR_BLACK), "Test 1: Write Pattern to Block 0\n");
+    kprintf("  Preparing test data...\n");
 
     // Fill buffer with pattern
     for (int i = 0; i < 512; i++) {
         write_buffer[i] = (uint8_t)(i % 256);
     }
 
-    screen_write("  Writing block 0...\n");
+    kprintf("  Writing block 0...\n");
     if (ramdisk_write_block(0, write_buffer) == 0) {
-        screen_write_color("  SUCCESS: Block written\n", MAKE_COLOR(COLOR_GREEN, COLOR_BLACK));
+        kprintf_color(MAKE_COLOR(COLOR_GREEN, COLOR_BLACK), "  SUCCESS: Block written\n");
     } else {
-        screen_write_color("  FAILED: Write error\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
-        screen_write("\n");
+        kprintf_color(MAKE_COLOR(COLOR_RED, COLOR_BLACK), "  FAILED: Write error\n");
+        kprintf("\n");
         return;
     }
-    screen_write("\n");
+    kprintf("\n");
 
     // Test 2: Read back and verify
-    screen_write_color("Test 2: Read and Verify Block 0\n", MAKE_COLOR(COLOR_GREEN, COLOR_BLACK));
-    screen_write("  Reading block 0...\n");
+    kprintf_color(MAKE_COLOR(COLOR_GREEN, COLOR_BLACK), "Test 2: Read and Verify Block 0\n");
+    kprintf("  Reading block 0...\n");
 
     if (ramdisk_read_block(0, read_buffer) == 0) {
-        screen_write_color("  SUCCESS: Block read\n", MAKE_COLOR(COLOR_GREEN, COLOR_BLACK));
+        kprintf_color(MAKE_COLOR(COLOR_GREEN, COLOR_BLACK), "  SUCCESS: Block read\n");
     } else {
-        screen_write_color("  FAILED: Read error\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
-        screen_write("\n");
+        kprintf_color(MAKE_COLOR(COLOR_RED, COLOR_BLACK), "  FAILED: Read error\n");
+        kprintf("\n");
         return;
     }
 
-    screen_write("  Verifying data...\n");
+    kprintf("  Verifying data...\n");
     int errors = 0;
     for (int i = 0; i < 512; i++) {
         if (read_buffer[i] != write_buffer[i]) {
@@ -1028,52 +1017,46 @@ static void cmd_ramdisk(void) {
     }
 
     if (errors == 0) {
-        screen_write_color("  SUCCESS: Data verified (0 errors)\n", MAKE_COLOR(COLOR_GREEN, COLOR_BLACK));
+        kprintf_color(MAKE_COLOR(COLOR_GREEN, COLOR_BLACK), "  SUCCESS: Data verified (0 errors)\n");
     } else {
-        screen_write_color("  FAILED: ", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
-        screen_write_dec(errors);
-        screen_write(" byte mismatches\n");
+        kprintf_color(MAKE_COLOR(COLOR_RED, COLOR_BLACK), "  FAILED: %d byte mismatches\n", errors);
     }
-    screen_write("\n");
+    kprintf("\n");
 
     // Test 3: Write ASCII text to block 1
-    screen_write_color("Test 3: Write ASCII Text to Block 1\n", MAKE_COLOR(COLOR_GREEN, COLOR_BLACK));
+    kprintf_color(MAKE_COLOR(COLOR_GREEN, COLOR_BLACK), "Test 3: Write ASCII Text to Block 1\n");
     memset(write_buffer, 0, 512);
     const char *test_msg = "Hello from Wittche OS RAM Disk! This is a test message.";
     strcpy((char *)write_buffer, test_msg);
 
-    screen_write("  Writing: '");
-    screen_write(test_msg);
-    screen_write("'\n");
+    kprintf("  Writing: '%s'\n", test_msg);
     ramdisk_write_block(1, write_buffer);
-    screen_write_color("  SUCCESS: Text written to block 1\n", MAKE_COLOR(COLOR_GREEN, COLOR_BLACK));
-    screen_write("\n");
+    kprintf_color(MAKE_COLOR(COLOR_GREEN, COLOR_BLACK), "  SUCCESS: Text written to block 1\n");
+    kprintf("\n");
 
     // Test 4: Read back text
-    screen_write_color("Test 4: Read Text from Block 1\n", MAKE_COLOR(COLOR_GREEN, COLOR_BLACK));
+    kprintf_color(MAKE_COLOR(COLOR_GREEN, COLOR_BLACK), "Test 4: Read Text from Block 1\n");
     memset(read_buffer, 0, 512);
     ramdisk_read_block(1, read_buffer);
-    screen_write("  Read back: '");
-    screen_write((char *)read_buffer);
-    screen_write("'\n");
+    kprintf("  Read back: '%s'\n", (char *)read_buffer);
 
     if (strcmp((char *)read_buffer, test_msg) == 0) {
-        screen_write_color("  SUCCESS: Text matches perfectly\n", MAKE_COLOR(COLOR_GREEN, COLOR_BLACK));
+        kprintf_color(MAKE_COLOR(COLOR_GREEN, COLOR_BLACK), "  SUCCESS: Text matches perfectly\n");
     } else {
-        screen_write_color("  FAILED: Text mismatch\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
+        kprintf_color(MAKE_COLOR(COLOR_RED, COLOR_BLACK), "  FAILED: Text mismatch\n");
     }
-    screen_write("\n");
+    kprintf("\n");
 
     // Test 5: Multiple block operations
-    screen_write_color("Test 5: Multiple Block Operations\n", MAKE_COLOR(COLOR_GREEN, COLOR_BLACK));
-    screen_write("  Writing to 10 different blocks...\n");
+    kprintf_color(MAKE_COLOR(COLOR_GREEN, COLOR_BLACK), "Test 5: Multiple Block Operations\n");
+    kprintf("  Writing to 10 different blocks...\n");
 
     for (int block = 10; block < 20; block++) {
         memset(write_buffer, 'A' + (block - 10), 512);
         ramdisk_write_block(block, write_buffer);
     }
 
-    screen_write("  Reading back and verifying...\n");
+    kprintf("  Reading back and verifying...\n");
     int block_errors = 0;
     for (int block = 10; block < 20; block++) {
         ramdisk_read_block(block, read_buffer);
@@ -1086,20 +1069,17 @@ static void cmd_ramdisk(void) {
     }
 
     if (block_errors == 0) {
-        screen_write_color("  SUCCESS: All 10 blocks verified\n", MAKE_COLOR(COLOR_GREEN, COLOR_BLACK));
+        kprintf_color(MAKE_COLOR(COLOR_GREEN, COLOR_BLACK), "  SUCCESS: All 10 blocks verified\n");
     } else {
-        screen_write_color("  FAILED: ", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
-        screen_write_dec(block_errors);
-        screen_write(" blocks had errors\n");
+        kprintf_color(MAKE_COLOR(COLOR_RED, COLOR_BLACK), "  FAILED: %d blocks had errors\n", block_errors);
     }
-    screen_write("\n");
+    kprintf("\n");
 
     // Summary
-    screen_write_color("RAM Disk Test Complete!\n", MAKE_COLOR(COLOR_GREEN, COLOR_BLACK));
-    screen_write("Total blocks available: ");
-    screen_write_dec(rd->block_count);
-    screen_write("\nBlocks tested: 12 (blocks 0, 1, and 10-19)\n");
-    screen_write("\n");
+    kprintf_color(MAKE_COLOR(COLOR_GREEN, COLOR_BLACK), "RAM Disk Test Complete!\n");
+    kprintf("Total blocks available: %u\n", rd->block_count);
+    kprintf("Blocks tested: 12 (blocks 0, 1, and 10-19)\n");
+    kprintf("\n");
 }
 
 /**
