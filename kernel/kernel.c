@@ -312,8 +312,8 @@ void kernel_main(void) {
     // Initialize memory management
     pmm_init();     // Physical memory manager
     heap_init();    // Kernel heap
-    ramdisk_init(); // RAM disk (virtual disk in memory)
     paging_init();  // Virtual memory (enables paging)
+    ramdisk_init(); // RAM disk (virtual disk in memory) - after paging!
 
     // Initialize process management (multitasking)
     process_init();
