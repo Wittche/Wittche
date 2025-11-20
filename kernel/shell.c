@@ -929,16 +929,21 @@ static void cmd_usermodetest(void) {
  * rdinfo command - display RAM disk information
  */
 static void cmd_rdinfo(void) {
+    screen_write_color("[CMD_RDINFO] Function called!\n", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
     screen_write("\n");
+    screen_write_color("[CMD_RDINFO] Writing header...\n", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
     screen_write("RAM Disk Information\n");
     screen_write("====================\n");
     screen_write("\n");
 
+    screen_write_color("[CMD_RDINFO] Checking if RAM disk is initialized...\n", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
     if (!ramdisk_is_initialized()) {
+        screen_write_color("[CMD_RDINFO] RAM disk NOT initialized!\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
         screen_write("Error: RAM Disk is not initialized!\n");
         screen_write("\n");
         return;
     }
+    screen_write_color("[CMD_RDINFO] RAM disk is initialized\n", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
 
     ramdisk_t *rd = ramdisk_get_info();
 
@@ -977,19 +982,24 @@ static void cmd_rdinfo(void) {
  * rdformat command - format RAM disk
  */
 static void cmd_rdformat(void) {
+    screen_write_color("[CMD_RDFORMAT] Function called!\n", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
     screen_write("\n");
     screen_write("RAM Disk Format\n");
     screen_write("===============\n");
     screen_write("\n");
 
+    screen_write_color("[CMD_RDFORMAT] Checking if RAM disk is initialized...\n", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
     if (!ramdisk_is_initialized()) {
+        screen_write_color("[CMD_RDFORMAT] RAM disk NOT initialized!\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
         screen_write("Error: RAM Disk is not initialized!\n");
         screen_write("\n");
         return;
     }
 
+    screen_write_color("[CMD_RDFORMAT] Calling ramdisk_format()...\n", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
     screen_write("Formatting RAM disk (clearing all data)...\n");
     ramdisk_format();
+    screen_write_color("[CMD_RDFORMAT] ramdisk_format() completed\n", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
     screen_write("RAM Disk formatted successfully!\n");
     screen_write("All blocks cleared to zero.\n");
     screen_write("\n");
@@ -999,18 +1009,24 @@ static void cmd_rdformat(void) {
  * ramdisk command - test RAM disk read/write
  */
 static void cmd_ramdisk(void) {
+    screen_write_color("[CMD_RAMDISK] Function called!\n", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
     screen_write("\n");
     screen_write("RAM Disk Test\n");
     screen_write("=============\n");
     screen_write("\n");
 
+    screen_write_color("[CMD_RAMDISK] Checking if RAM disk is initialized...\n", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
     if (!ramdisk_is_initialized()) {
+        screen_write_color("[CMD_RAMDISK] RAM disk NOT initialized!\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
         screen_write("Error: RAM Disk is not initialized!\n");
         screen_write("\n");
         return;
     }
+    screen_write_color("[CMD_RAMDISK] RAM disk is initialized\n", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
 
+    screen_write_color("[CMD_RAMDISK] Getting RAM disk info...\n", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
     ramdisk_t *rd = ramdisk_get_info();
+    screen_write_color("[CMD_RAMDISK] Got RAM disk info\n", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
 
     // Allocate buffers from HEAP instead of stack to avoid stack overflow!
     // Stack can't handle 1KB of local variables safely
@@ -1704,10 +1720,13 @@ void shell_process_command(char *command) {
     } else if (strcmp(cmd, "banner") == 0) {
         cmd_banner();
     } else if (strcmp(cmd, "ramdisk") == 0) {
+        screen_write_color("[DISPATCHER] Matched 'ramdisk' command, calling cmd_ramdisk()\n", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
         cmd_ramdisk();
     } else if (strcmp(cmd, "rdformat") == 0) {
+        screen_write_color("[DISPATCHER] Matched 'rdformat' command, calling cmd_rdformat()\n", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
         cmd_rdformat();
     } else if (strcmp(cmd, "rdinfo") == 0) {
+        screen_write_color("[DISPATCHER] Matched 'rdinfo' command, calling cmd_rdinfo()\n", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
         cmd_rdinfo();
     } else if (strcmp(cmd, "fsformat") == 0) {
         cmd_fsformat();
