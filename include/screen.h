@@ -41,10 +41,12 @@ void screen_write_color(const char *str, uint8_t color);
 void screen_write_hex(uint32_t num);
 void screen_write_dec(uint32_t num);
 void screen_set_color(uint8_t color);
+uint8_t screen_get_color(void);
 void screen_scroll(void);
 void screen_update_cursor(void);
 int screen_get_cursor_row(void);
 int screen_get_cursor_col(void);
 void screen_set_cursor(int row, int col);
+void screen_putchar_internal_for_kprintf(char c);
 
 #endif // SCREEN_H
