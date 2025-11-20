@@ -904,26 +904,19 @@ static void cmd_usermodetest(void) {
  * rdinfo command - display RAM disk information
  */
 static void cmd_rdinfo(void) {
-    // ULTIMATE TEST: Direct video memory write!
-    // This MUST work if the function is called at all
-    volatile uint16_t *video = (volatile uint16_t *)0xB8000;
+    // Test if screen_write_dec works
+    screen_write_dec(9999);
+    screen_write_dec(8888);
+    screen_write_dec(7777);
 
-    // Write "XXXX" in bright white on black at current cursor position
-    // Get current cursor position first
-    int row = screen_get_cursor_row();
-    int col = screen_get_cursor_col();
-    int pos = row * 80 + col;
+    // Test if screen_putchar works
+    screen_putchar('A');
+    screen_putchar('B');
+    screen_putchar('C');
+    screen_putchar('\n');
 
-    video[pos++] = 0x0F58; // 'X' in white
-    video[pos++] = 0x0F58; // 'X' in white
-    video[pos++] = 0x0F58; // 'X' in white
-    video[pos++] = 0x0F58; // 'X' in white
-
-    screen_write("\n");
-    screen_write("TEST 1: Can you see this?\n");
-    screen_write("TEST 2: Using screen_write\n");
-    screen_write("TEST 3: More text here\n");
-    screen_write("\n");
+    // Test if screen_write works
+    screen_write("TEST: If you see this, screen_write works!\n");
 
     // Don't call ANY ramdisk functions yet
     return;
