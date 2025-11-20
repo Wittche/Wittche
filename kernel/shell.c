@@ -904,12 +904,12 @@ static void cmd_usermodetest(void) {
  * rdinfo command - display RAM disk information
  */
 static void cmd_rdinfo(void) {
-    // Test WITHOUT calling any ramdisk functions at all!
-    kprintf("\n");
-    kprintf("TEST 1: Can you see this?\n");
-    kprintf("TEST 2: Numbers work: %d %d %d\n", 111, 222, 333);
-    kprintf("TEST 3: More text here\n");
-    kprintf("\n");
+    // Test with screen_write instead of kprintf!
+    screen_write("\n");
+    screen_write("TEST 1: Can you see this?\n");
+    screen_write("TEST 2: Using screen_write\n");
+    screen_write("TEST 3: More text here\n");
+    screen_write("\n");
 
     // Don't call ANY ramdisk functions yet
     return;
