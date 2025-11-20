@@ -16,10 +16,12 @@ start:
     mov si, msg_loading
     call print_string
 
-    ; Load kernel from disk
-    ; We'll load sectors 2-201 (kernel) to 0x1000:0x0000
+    ; Load kernel from disk in multiple reads (BIOS can't read 200 sectors at once!)
+    ; CHS: Sectors 1-63, Heads 0+, Cylinders 0+
+
+    ; Read 1: First 62 sectors (2-63) to 0x1000:0x0000
     mov ah, 0x02        ; BIOS read sector function
-    mov al, 200         ; Number of sectors to read (100KB) - INCREASED!
+    mov al, 62          ; Number of sectors (sector 2 to 63)
     mov ch, 0           ; Cylinder 0
     mov cl, 2           ; Start from sector 2 (sector 1 is boot sector)
     mov dh, 0           ; Head 0
@@ -28,7 +30,34 @@ start:
     mov es, bx
     xor bx, bx
     int 0x13            ; Call BIOS
+    jc disk_error       ; Jump if carry flag set (error)
 
+    ; Read 2: Next 63 sectors (1-63 of head 1) to 0x1800:0x0000
+    ; 62 sectors * 512 bytes = 31744 = 0x7C00, next segment = 0x1000 + 0x7C0 = 0x17C0 ≈ 0x1800
+    mov ah, 0x02        ; BIOS read sector function
+    mov al, 63          ; Number of sectors
+    mov ch, 0           ; Cylinder 0
+    mov cl, 1           ; Start from sector 1
+    mov dh, 1           ; Head 1 (next track)
+    mov dl, 0x80        ; Hard drive
+    mov bx, 0x1800      ; Next segment
+    mov es, bx
+    xor bx, bx
+    int 0x13            ; Call BIOS
+    jc disk_error       ; Jump if carry flag set (error)
+
+    ; Read 3: Next 63 sectors (1-63 of cylinder 1) to 0x2000:0x0000
+    ; Total so far: 125 sectors, next segment ≈ 0x2000
+    mov ah, 0x02        ; BIOS read sector function
+    mov al, 63          ; Number of sectors
+    mov ch, 1           ; Cylinder 1
+    mov cl, 1           ; Start from sector 1
+    mov dh, 0           ; Head 0
+    mov dl, 0x80        ; Hard drive
+    mov bx, 0x2000      ; Next segment
+    mov es, bx
+    xor bx, bx
+    int 0x13            ; Call BIOS
     jc disk_error       ; Jump if carry flag set (error)
 
     ; Print success message
