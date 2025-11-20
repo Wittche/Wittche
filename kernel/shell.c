@@ -909,13 +909,23 @@ static void cmd_rdinfo(void) {
     kprintf("====================\n");
     kprintf("\n");
 
-    if (!ramdisk_is_initialized()) {
+    // Test if kprintf works BEFORE calling ramdisk functions
+    kprintf("DEBUG: Before ramdisk_is_initialized\n");
+
+    int is_init = ramdisk_is_initialized();
+
+    // Test if kprintf works AFTER calling ramdisk functions
+    kprintf("DEBUG: After ramdisk_is_initialized, result = %d\n", is_init);
+
+    if (!is_init) {
         kprintf("Error: RAM Disk is not initialized!\n");
         kprintf("\n");
         return;
     }
 
+    kprintf("DEBUG: Before ramdisk_get_info\n");
     ramdisk_t *rd = ramdisk_get_info();
+    kprintf("DEBUG: After ramdisk_get_info\n");
 
     kprintf("Status:\n");
     kprintf("  Initialized:     YES\n");
