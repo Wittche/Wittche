@@ -1321,19 +1321,18 @@ static void cmd_cat(const char *args) {
         return;
     }
 
-    // Open file
-    int fd = fs_open(args, FS_OPEN_READ);
-    if (fd < 0) {
-        screen_write_color("Error: Failed to open file\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
-        screen_write("\n");
-        return;
-    }
-
     // If file is empty
     if (stat.size == 0) {
         screen_write_color("(empty file)\n", MAKE_COLOR(COLOR_DARK_GREY, COLOR_BLACK));
         screen_write("\n");
-        fs_close(fd);
+        return;
+    }
+
+    // Open file for reading
+    int fd = fs_open(args, FS_OPEN_READ);
+    if (fd < 0) {
+        screen_write_color("Error: Failed to open file for reading\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
+        screen_write("\n");
         return;
     }
 
@@ -1348,14 +1347,19 @@ static void cmd_cat(const char *args) {
 
     // Read file
     int bytes_read = fs_read(fd, buffer, stat.size);
-    if (bytes_read < 0) {
-        screen_write_color("Error: Failed to read file\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
-        screen_write("\n");
+
+    // Close file immediately after reading
+    fs_close(fd);
+
+    if (bytes_read <= 0) {
+        screen_write_color("Error: Failed to read file (", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
+        screen_write_dec(bytes_read);
+        screen_write(" bytes read)\n\n");
         kfree(buffer);
-        fs_close(fd);
         return;
     }
 
+    // Null terminate the buffer
     buffer[bytes_read] = '\0';
 
     // Display contents
@@ -1363,7 +1367,6 @@ static void cmd_cat(const char *args) {
     screen_write("\n\n");
 
     kfree(buffer);
-    fs_close(fd);
 }
 
 /**
