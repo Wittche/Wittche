@@ -2,7 +2,6 @@
 #include "../include/ramdisk.h"
 #include "../include/string.h"
 #include "../include/heap.h"
-#include "../include/kprintf.h"
 
 // Global RAM disk instance
 static ramdisk_t ramdisk;
@@ -12,12 +11,10 @@ static ramdisk_t ramdisk;
  * Allocates memory and prepares the virtual disk
  */
 void ramdisk_init(void) {
-    kprintf("RAM Disk: Initializing...\n");
-
     // Allocate memory for RAM disk
     ramdisk.data = (uint8_t *)kmalloc(RAMDISK_SIZE);
+
     if (!ramdisk.data) {
-        kprintf("RAM Disk: ERROR - Failed to allocate memory!\n");
         ramdisk.initialized = 0;
         return;
     }
@@ -30,11 +27,6 @@ void ramdisk_init(void) {
 
     // Clear the disk
     memset(ramdisk.data, 0, RAMDISK_SIZE);
-
-    kprintf("RAM Disk: Initialized successfully\n");
-    kprintf("  Size: %d bytes (%d KB)\n", RAMDISK_SIZE, RAMDISK_SIZE / 1024);
-    kprintf("  Block Size: %d bytes\n", RAMDISK_BLOCK_SIZE);
-    kprintf("  Block Count: %d blocks\n", RAMDISK_BLOCK_COUNT);
 }
 
 /**
@@ -46,20 +38,16 @@ void ramdisk_init(void) {
 int ramdisk_read_block(uint32_t block_num, void *buffer) {
     // Check if initialized
     if (!ramdisk.initialized) {
-        kprintf("RAM Disk: ERROR - Not initialized!\n");
         return -1;
     }
 
     // Validate block number
     if (block_num >= ramdisk.block_count) {
-        kprintf("RAM Disk: ERROR - Invalid block number %d (max %d)\n",
-                block_num, ramdisk.block_count - 1);
         return -1;
     }
 
     // Validate buffer
     if (!buffer) {
-        kprintf("RAM Disk: ERROR - NULL buffer!\n");
         return -1;
     }
 
@@ -81,20 +69,16 @@ int ramdisk_read_block(uint32_t block_num, void *buffer) {
 int ramdisk_write_block(uint32_t block_num, const void *buffer) {
     // Check if initialized
     if (!ramdisk.initialized) {
-        kprintf("RAM Disk: ERROR - Not initialized!\n");
         return -1;
     }
 
     // Validate block number
     if (block_num >= ramdisk.block_count) {
-        kprintf("RAM Disk: ERROR - Invalid block number %d (max %d)\n",
-                block_num, ramdisk.block_count - 1);
         return -1;
     }
 
     // Validate buffer
     if (!buffer) {
-        kprintf("RAM Disk: ERROR - NULL buffer!\n");
         return -1;
     }
 
@@ -113,13 +97,10 @@ int ramdisk_write_block(uint32_t block_num, const void *buffer) {
  */
 void ramdisk_format(void) {
     if (!ramdisk.initialized) {
-        kprintf("RAM Disk: ERROR - Not initialized!\n");
         return;
     }
 
-    kprintf("RAM Disk: Formatting...\n");
     memset(ramdisk.data, 0, ramdisk.size);
-    kprintf("RAM Disk: Format complete\n");
 }
 
 /**
