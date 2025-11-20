@@ -12,13 +12,18 @@ static ramdisk_t ramdisk;
  * Allocates memory and prepares the virtual disk
  */
 void ramdisk_init(void) {
-    kprintf("RAM Disk: Initializing...\n");
+    kprintf("=== RAMDISK INIT START ===\n");
+    kprintf("About to allocate %d bytes\n", RAMDISK_SIZE);
 
     // Allocate memory for RAM disk
     ramdisk.data = (uint8_t *)kmalloc(RAMDISK_SIZE);
+
+    kprintf("kmalloc returned: %p\n", ramdisk.data);
+
     if (!ramdisk.data) {
-        kprintf("RAM Disk: ERROR - Failed to allocate memory!\n");
+        kprintf("ERROR: kmalloc FAILED!\n");
         ramdisk.initialized = 0;
+        kprintf("Set initialized to: %d\n", ramdisk.initialized);
         return;
     }
 
@@ -28,13 +33,17 @@ void ramdisk_init(void) {
     ramdisk.block_count = RAMDISK_BLOCK_COUNT;
     ramdisk.initialized = 1;
 
+    kprintf("Set initialized to: %d\n", ramdisk.initialized);
+    kprintf("About to memset...\n");
+
     // Clear the disk
     memset(ramdisk.data, 0, RAMDISK_SIZE);
 
-    kprintf("RAM Disk: Initialized successfully\n");
+    kprintf("RAM Disk: SUCCESS!\n");
     kprintf("  Size: %d bytes (%d KB)\n", RAMDISK_SIZE, RAMDISK_SIZE / 1024);
     kprintf("  Block Size: %d bytes\n", RAMDISK_BLOCK_SIZE);
     kprintf("  Block Count: %d blocks\n", RAMDISK_BLOCK_COUNT);
+    kprintf("=== RAMDISK INIT COMPLETE ===\n");
 }
 
 /**
@@ -135,5 +144,6 @@ ramdisk_t *ramdisk_get_info(void) {
  * Returns: 1 if initialized, 0 otherwise
  */
 int ramdisk_is_initialized(void) {
+    kprintf("[ramdisk_is_initialized] Checking: ramdisk.initialized = %d\n", ramdisk.initialized);
     return ramdisk.initialized;
 }
