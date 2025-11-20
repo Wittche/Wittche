@@ -904,21 +904,23 @@ static void cmd_usermodetest(void) {
  * rdinfo command - display RAM disk information
  */
 static void cmd_rdinfo(void) {
-    kprintf("\n");
-    kprintf("RDINFO START\n");
+    screen_write("\n");
+    screen_write("RDINFO START\n");
 
     int init_status = ramdisk_is_initialized();
-    kprintf("ramdisk_is_initialized returned: %d\n", init_status);
+    screen_write("ramdisk_is_initialized returned: ");
+    screen_write_dec(init_status);
+    screen_write("\n");
 
     if (!init_status) {
-        kprintf("ERROR: RAM Disk is NOT initialized!\n");
-        kprintf("\n");
+        screen_write("ERROR: RAM Disk is NOT initialized!\n");
+        screen_write("\n");
         return;
     }
 
-    kprintf("RAM Disk Information\n");
-    kprintf("====================\n");
-    kprintf("\n");
+    screen_write("RAM Disk Information\n");
+    screen_write("====================\n");
+    screen_write("\n");
 
     ramdisk_t *rd = ramdisk_get_info();
 

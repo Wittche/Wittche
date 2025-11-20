@@ -2,7 +2,7 @@
 #include "../include/ramdisk.h"
 #include "../include/string.h"
 #include "../include/heap.h"
-#include "../include/kprintf.h"
+#include "../include/screen.h"
 
 // Global RAM disk instance
 static ramdisk_t ramdisk;
@@ -12,18 +12,19 @@ static ramdisk_t ramdisk;
  * Allocates memory and prepares the virtual disk
  */
 void ramdisk_init(void) {
-    kprintf("=== RAMDISK INIT START ===\n");
-    kprintf("About to allocate %d bytes\n", RAMDISK_SIZE);
+    screen_write("=== RAMDISK INIT START ===\n");
+    screen_write("About to allocate memory\n");
 
     // Allocate memory for RAM disk
     ramdisk.data = (uint8_t *)kmalloc(RAMDISK_SIZE);
 
-    kprintf("kmalloc returned: %p\n", ramdisk.data);
+    screen_write("kmalloc returned: 0x");
+    screen_write_hex((uint32_t)ramdisk.data);
+    screen_write("\n");
 
     if (!ramdisk.data) {
-        kprintf("ERROR: kmalloc FAILED!\n");
+        screen_write("ERROR: kmalloc FAILED!\n");
         ramdisk.initialized = 0;
-        kprintf("Set initialized to: %d\n", ramdisk.initialized);
         return;
     }
 
@@ -33,17 +34,15 @@ void ramdisk_init(void) {
     ramdisk.block_count = RAMDISK_BLOCK_COUNT;
     ramdisk.initialized = 1;
 
-    kprintf("Set initialized to: %d\n", ramdisk.initialized);
-    kprintf("About to memset...\n");
+    screen_write("Set initialized to: ");
+    screen_write_dec(ramdisk.initialized);
+    screen_write("\n");
 
     // Clear the disk
     memset(ramdisk.data, 0, RAMDISK_SIZE);
 
-    kprintf("RAM Disk: SUCCESS!\n");
-    kprintf("  Size: %d bytes (%d KB)\n", RAMDISK_SIZE, RAMDISK_SIZE / 1024);
-    kprintf("  Block Size: %d bytes\n", RAMDISK_BLOCK_SIZE);
-    kprintf("  Block Count: %d blocks\n", RAMDISK_BLOCK_COUNT);
-    kprintf("=== RAMDISK INIT COMPLETE ===\n");
+    screen_write("RAM Disk: SUCCESS!\n");
+    screen_write("=== RAMDISK INIT COMPLETE ===\n");
 }
 
 /**
@@ -144,6 +143,8 @@ ramdisk_t *ramdisk_get_info(void) {
  * Returns: 1 if initialized, 0 otherwise
  */
 int ramdisk_is_initialized(void) {
-    kprintf("[ramdisk_is_initialized] Checking: ramdisk.initialized = %d\n", ramdisk.initialized);
+    screen_write("[ramdisk_is_initialized] Checking: ramdisk.initialized = ");
+    screen_write_dec(ramdisk.initialized);
+    screen_write("\n");
     return ramdisk.initialized;
 }
