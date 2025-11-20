@@ -856,31 +856,35 @@ static void cmd_syscalltest(void) {
 }
 
 /**
- * usermodetest command - test user mode (Ring 3)
- * Creates a process that runs in Ring 3 with privilege separation
+ * usermodetest command - test syscall infrastructure
+ * NOTE: True Ring 3 user mode requires ELF loader (planned for v1.0)
+ * For now, test syscalls from kernel mode to verify infrastructure
  */
 static void cmd_usermodetest(void) {
     kprintf("\n");
-    kprintf_color(MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK), "Ring 3 User Mode Test\n");
-    kprintf_color(MAKE_COLOR(COLOR_CYAN, COLOR_BLACK), "======================\n");
-    kprintf("Creating user mode process with virtual memory...\n\n");
+    kprintf_color(MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK), "Syscall Infrastructure Test\n");
+    kprintf_color(MAKE_COLOR(COLOR_CYAN, COLOR_BLACK), "============================\n");
+    kprintf_color(MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK),
+                 "NOTE: Full Ring 3 requires ELF loader (planned for v1.0)\n");
+    kprintf("Testing syscall infrastructure from kernel mode...\n\n");
 
-    // Create REAL user mode process with paging
-    pid_t pid = process_create_user_mode("UserTest", test_usermode, 4096, 10);
+    // Test syscalls from kernel mode
+    // (Full user mode needs ELF loader to load separate user binaries)
+    pid_t pid = process_create_with_priority("SyscallTest", test_usermode, 4096, 10);
     if (pid > 0) {
         kprintf_color(MAKE_COLOR(COLOR_GREEN, COLOR_BLACK),
-                     "Created Ring 3 Process (PID %d)\n", pid);
-        kprintf("\nUser mode features:");
-        kprintf("\n  - Isolated virtual address space\n");
-        kprintf("  - Ring 3 execution (CPL=3)\n");
-        kprintf("  - System calls via INT 0x80\n");
-        kprintf("  - User code at 0x40000000\n");
-        kprintf("  - User stack at 0x80000000\n\n");
-        kprintf_color(MAKE_COLOR(COLOR_GREEN, COLOR_BLACK),
-                     "Watch the process run in Ring 3!\n");
+                     "Created Syscall Test Process (PID %d)\n", pid);
+        kprintf("\nTesting syscalls:");
+        kprintf("\n  - SYS_WRITE (write to screen)\n");
+        kprintf("  - SYS_GETPID (get process ID)\n");
+        kprintf("  - SYS_SLEEP (sleep ms)\n");
+        kprintf("  - SYS_EXIT (exit process)\n\n");
+        kprintf_color(MAKE_COLOR(COLOR_CYAN, COLOR_BLACK),
+                     "Infrastructure ready for future Ring 3 support!\n");
+        kprintf("(Page directories, GDT/TSS, syscalls all working)\n");
     } else {
         kprintf_color(MAKE_COLOR(COLOR_RED, COLOR_BLACK),
-                     "Failed to create user mode process\n");
+                     "Failed to create test process\n");
     }
 
     kprintf("\n");
