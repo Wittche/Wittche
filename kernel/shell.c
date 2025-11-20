@@ -10,6 +10,7 @@
 #include "../include/paging.h"
 #include "../include/process.h"
 #include "../include/ramdisk.h"
+#include "../include/fs.h"
 
 // External test processes from kernel.c
 extern void test_process_a(void);
@@ -54,6 +55,12 @@ static const char *available_commands[] = {
     "ramdisk",
     "rdformat",
     "rdinfo",
+    "fsformat",
+    "ls",
+    "cat",
+    "touch",
+    "rm",
+    "mkdir",
     NULL  // Sentinel
 };
 
