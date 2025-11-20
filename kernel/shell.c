@@ -905,24 +905,17 @@ static void cmd_usermodetest(void) {
  */
 static void cmd_rdinfo(void) {
     kprintf("\n");
-    kprintf("DEBUG: rdinfo command started\n");
     kprintf_color(MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK), "RAM Disk Information\n");
     kprintf_color(MAKE_COLOR(COLOR_CYAN, COLOR_BLACK), "====================\n");
     kprintf("\n");
 
-    kprintf("DEBUG: About to check ramdisk_is_initialized()\n");
-    int is_init = ramdisk_is_initialized();
-    kprintf("DEBUG: ramdisk_is_initialized() returned: %d\n", is_init);
-
-    if (!is_init) {
+    if (!ramdisk_is_initialized()) {
         kprintf_color(MAKE_COLOR(COLOR_RED, COLOR_BLACK), "RAM Disk is NOT initialized!\n");
         kprintf("\n");
         return;
     }
 
-    kprintf("DEBUG: About to call ramdisk_get_info()\n");
     ramdisk_t *rd = ramdisk_get_info();
-    kprintf("DEBUG: ramdisk_get_info() returned: 0x%X\n", (uint32_t)rd);
 
     kprintf_color(MAKE_COLOR(COLOR_GREEN, COLOR_BLACK), "Status:\n");
     kprintf("  Initialized:     ");
@@ -950,22 +943,18 @@ static void cmd_rdinfo(void) {
  */
 static void cmd_rdformat(void) {
     kprintf("\n");
-    kprintf("DEBUG: rdformat command started\n");
     kprintf_color(MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK), "RAM Disk Format\n");
     kprintf_color(MAKE_COLOR(COLOR_CYAN, COLOR_BLACK), "===============\n");
     kprintf("\n");
 
-    kprintf("DEBUG: Checking if ramdisk is initialized\n");
     if (!ramdisk_is_initialized()) {
         kprintf_color(MAKE_COLOR(COLOR_RED, COLOR_BLACK), "Error: RAM Disk is not initialized!\n");
         kprintf("\n");
         return;
     }
 
-    kprintf("DEBUG: Ramdisk is initialized, calling ramdisk_format()\n");
     kprintf("Formatting RAM disk (clearing all data)...\n");
     ramdisk_format();
-    kprintf("DEBUG: ramdisk_format() completed\n");
     kprintf_color(MAKE_COLOR(COLOR_GREEN, COLOR_BLACK), "RAM Disk formatted successfully!\n");
     kprintf("All blocks cleared to zero.\n");
     kprintf("\n");
@@ -976,24 +965,30 @@ static void cmd_rdformat(void) {
  */
 static void cmd_ramdisk(void) {
     kprintf("\n");
-    kprintf("DEBUG: ramdisk test command started\n");
     kprintf_color(MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK), "RAM Disk Test\n");
     kprintf_color(MAKE_COLOR(COLOR_CYAN, COLOR_BLACK), "=============\n");
     kprintf("\n");
 
-    kprintf("DEBUG: Checking initialization\n");
     if (!ramdisk_is_initialized()) {
         kprintf_color(MAKE_COLOR(COLOR_RED, COLOR_BLACK), "Error: RAM Disk is not initialized!\n");
         kprintf("\n");
         return;
     }
 
-    kprintf("DEBUG: Getting ramdisk info\n");
     ramdisk_t *rd = ramdisk_get_info();
-    kprintf("DEBUG: Got ramdisk info, starting tests\n");
 
-    uint8_t write_buffer[512];
-    uint8_t read_buffer[512];
+    // Allocate buffers from HEAP instead of stack to avoid stack overflow!
+    // Stack can't handle 1KB of local variables safely
+    uint8_t *write_buffer = (uint8_t *)kmalloc(512);
+    uint8_t *read_buffer = (uint8_t *)kmalloc(512);
+
+    if (!write_buffer || !read_buffer) {
+        kprintf_color(MAKE_COLOR(COLOR_RED, COLOR_BLACK), "Error: Failed to allocate test buffers!\n");
+        if (write_buffer) kfree(write_buffer);
+        if (read_buffer) kfree(read_buffer);
+        kprintf("\n");
+        return;
+    }
 
     // Test 1: Write test pattern to block 0
     kprintf_color(MAKE_COLOR(COLOR_GREEN, COLOR_BLACK), "Test 1: Write Pattern to Block 0\n");
@@ -1010,6 +1005,8 @@ static void cmd_ramdisk(void) {
     } else {
         kprintf_color(MAKE_COLOR(COLOR_RED, COLOR_BLACK), "  FAILED: Write error\n");
         kprintf("\n");
+        kfree(write_buffer);
+        kfree(read_buffer);
         return;
     }
     kprintf("\n");
@@ -1023,6 +1020,8 @@ static void cmd_ramdisk(void) {
     } else {
         kprintf_color(MAKE_COLOR(COLOR_RED, COLOR_BLACK), "  FAILED: Read error\n");
         kprintf("\n");
+        kfree(write_buffer);
+        kfree(read_buffer);
         return;
     }
 
@@ -1098,6 +1097,10 @@ static void cmd_ramdisk(void) {
     kprintf("Total blocks available: %d\n", rd->block_count);
     kprintf("Blocks tested: 12 (blocks 0, 1, and 10-19)\n");
     kprintf("\n");
+
+    // Clean up heap allocations
+    kfree(write_buffer);
+    kfree(read_buffer);
 }
 
 /**
