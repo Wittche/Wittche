@@ -905,46 +905,32 @@ static void cmd_usermodetest(void) {
  */
 static void cmd_rdinfo(void) {
     screen_write("\n");
-    screen_write("RAM Disk Information\n");
-    screen_write("====================\n");
+    screen_write("TEST A: Before calling ramdisk functions\n");
     screen_write("\n");
 
-    if (!ramdisk_is_initialized()) {
+    // Call ramdisk_is_initialized
+    int is_init = ramdisk_is_initialized();
+
+    screen_write("TEST B: After calling ramdisk_is_initialized\n");
+    screen_write("Result: ");
+    screen_write_dec(is_init);
+    screen_write("\n\n");
+
+    if (!is_init) {
         screen_write("Error: RAM Disk is not initialized!\n");
         screen_write("\n");
         return;
     }
 
+    screen_write("TEST C: Before calling ramdisk_get_info\n");
     ramdisk_t *rd = ramdisk_get_info();
+    screen_write("TEST D: After calling ramdisk_get_info\n");
 
-    screen_write("Status:\n");
-    screen_write("  Initialized:     YES\n");
-    screen_write("  Base Address:    0x");
+    screen_write("Base address: 0x");
     screen_write_hex((uint32_t)rd->data);
-    screen_write("\n\n");
+    screen_write("\n");
 
-    screen_write("Configuration:\n");
-    screen_write("  Total Size:      ");
-    screen_write_dec(rd->size);
-    screen_write(" bytes (");
-    screen_write_dec(rd->size / 1024);
-    screen_write(" KB / ");
-    screen_write_dec(rd->size / (1024 * 1024));
-    screen_write(" MB)\n");
-
-    screen_write("  Block Size:      ");
-    screen_write_dec(rd->block_size);
-    screen_write(" bytes\n");
-
-    screen_write("  Block Count:     ");
-    screen_write_dec(rd->block_count);
-    screen_write(" blocks\n\n");
-
-    screen_write("Technical Details:\n");
-    screen_write("  Type:            Virtual disk in RAM\n");
-    screen_write("  Speed:           Memory speed (very fast)\n");
-    screen_write("  Volatile:        Yes (data lost on reboot)\n");
-    screen_write("  Purpose:         Foundation for file system\n");
+    screen_write("TEST E: End of function\n");
     screen_write("\n");
 }
 
