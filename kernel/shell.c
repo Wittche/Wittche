@@ -929,16 +929,21 @@ static void cmd_usermodetest(void) {
  * rdinfo command - display RAM disk information
  */
 static void cmd_rdinfo(void) {
+    screen_write_color("[CMD_RDINFO] Function called!\n", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
     screen_write("\n");
+    screen_write_color("[CMD_RDINFO] Writing header...\n", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
     screen_write("RAM Disk Information\n");
     screen_write("====================\n");
     screen_write("\n");
 
+    screen_write_color("[CMD_RDINFO] Checking if RAM disk is initialized...\n", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
     if (!ramdisk_is_initialized()) {
+        screen_write_color("[CMD_RDINFO] RAM disk NOT initialized!\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
         screen_write("Error: RAM Disk is not initialized!\n");
         screen_write("\n");
         return;
     }
+    screen_write_color("[CMD_RDINFO] RAM disk is initialized\n", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
 
     ramdisk_t *rd = ramdisk_get_info();
 
@@ -977,19 +982,24 @@ static void cmd_rdinfo(void) {
  * rdformat command - format RAM disk
  */
 static void cmd_rdformat(void) {
+    screen_write_color("[CMD_RDFORMAT] Function called!\n", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
     screen_write("\n");
     screen_write("RAM Disk Format\n");
     screen_write("===============\n");
     screen_write("\n");
 
+    screen_write_color("[CMD_RDFORMAT] Checking if RAM disk is initialized...\n", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
     if (!ramdisk_is_initialized()) {
+        screen_write_color("[CMD_RDFORMAT] RAM disk NOT initialized!\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
         screen_write("Error: RAM Disk is not initialized!\n");
         screen_write("\n");
         return;
     }
 
+    screen_write_color("[CMD_RDFORMAT] Calling ramdisk_format()...\n", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
     screen_write("Formatting RAM disk (clearing all data)...\n");
     ramdisk_format();
+    screen_write_color("[CMD_RDFORMAT] ramdisk_format() completed\n", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
     screen_write("RAM Disk formatted successfully!\n");
     screen_write("All blocks cleared to zero.\n");
     screen_write("\n");
@@ -999,18 +1009,24 @@ static void cmd_rdformat(void) {
  * ramdisk command - test RAM disk read/write
  */
 static void cmd_ramdisk(void) {
+    screen_write_color("[CMD_RAMDISK] Function called!\n", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
     screen_write("\n");
     screen_write("RAM Disk Test\n");
     screen_write("=============\n");
     screen_write("\n");
 
+    screen_write_color("[CMD_RAMDISK] Checking if RAM disk is initialized...\n", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
     if (!ramdisk_is_initialized()) {
+        screen_write_color("[CMD_RAMDISK] RAM disk NOT initialized!\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
         screen_write("Error: RAM Disk is not initialized!\n");
         screen_write("\n");
         return;
     }
+    screen_write_color("[CMD_RAMDISK] RAM disk is initialized\n", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
 
+    screen_write_color("[CMD_RAMDISK] Getting RAM disk info...\n", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
     ramdisk_t *rd = ramdisk_get_info();
+    screen_write_color("[CMD_RAMDISK] Got RAM disk info\n", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
 
     // Allocate buffers from HEAP instead of stack to avoid stack overflow!
     // Stack can't handle 1KB of local variables safely
@@ -1297,6 +1313,10 @@ static void cmd_cat(const char *args) {
         return;
     }
 
+    screen_write_color("[DEBUG] Reading file: ", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
+    screen_write(args);
+    screen_write("\n");
+
     // Check if file exists
     if (!fs_exists(args)) {
         screen_write_color("Error: File '", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
@@ -1304,6 +1324,8 @@ static void cmd_cat(const char *args) {
         screen_write("' not found\n\n");
         return;
     }
+
+    screen_write_color("[DEBUG] File exists\n", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
 
     // Get file info
     fs_inode_t stat;
@@ -1313,6 +1335,13 @@ static void cmd_cat(const char *args) {
         return;
     }
 
+    screen_write_color("[DEBUG] File size: ", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
+    screen_write_dec(stat.size);
+    screen_write(" bytes\n");
+    screen_write_color("[DEBUG] File mode: 0x", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
+    screen_write_hex(stat.mode);
+    screen_write("\n");
+
     // Check if it's a file (not directory)
     if ((stat.mode & 0xFF) != FS_TYPE_FILE) {
         screen_write_color("Error: '", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
@@ -1321,23 +1350,32 @@ static void cmd_cat(const char *args) {
         return;
     }
 
-    // Open file
-    int fd = fs_open(args, FS_OPEN_READ);
-    if (fd < 0) {
-        screen_write_color("Error: Failed to open file\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
-        screen_write("\n");
-        return;
-    }
-
     // If file is empty
     if (stat.size == 0) {
         screen_write_color("(empty file)\n", MAKE_COLOR(COLOR_DARK_GREY, COLOR_BLACK));
         screen_write("\n");
-        fs_close(fd);
         return;
     }
 
+    // Open file for reading
+    screen_write_color("[DEBUG] Opening file for reading...\n", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
+    int fd = fs_open(args, FS_OPEN_READ);
+    if (fd < 0) {
+        screen_write_color("Error: Failed to open file for reading (fd=", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
+        screen_write_dec(fd);
+        screen_write(")\n\n");
+        return;
+    }
+
+    screen_write_color("[DEBUG] File opened, fd=", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
+    screen_write_dec(fd);
+    screen_write("\n");
+
     // Allocate buffer for file contents
+    screen_write_color("[DEBUG] Allocating buffer (", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
+    screen_write_dec(stat.size + 1);
+    screen_write(" bytes)...\n");
+
     char *buffer = (char *)kmalloc(stat.size + 1);
     if (!buffer) {
         screen_write_color("Error: Out of memory\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
@@ -1346,24 +1384,45 @@ static void cmd_cat(const char *args) {
         return;
     }
 
+    screen_write_color("[DEBUG] Buffer allocated at 0x", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
+    screen_write_hex((uint32_t)buffer);
+    screen_write("\n");
+
     // Read file
+    screen_write_color("[DEBUG] Calling fs_read for ", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
+    screen_write_dec(stat.size);
+    screen_write(" bytes...\n");
+
     int bytes_read = fs_read(fd, buffer, stat.size);
-    if (bytes_read < 0) {
-        screen_write_color("Error: Failed to read file\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
-        screen_write("\n");
+
+    screen_write_color("[DEBUG] fs_read returned: ", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
+    screen_write_dec(bytes_read);
+    screen_write(" bytes\n");
+
+    // Close file immediately after reading
+    fs_close(fd);
+
+    if (bytes_read <= 0) {
+        screen_write_color("Error: Failed to read file (", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
+        screen_write_dec(bytes_read);
+        screen_write(" bytes read)\n\n");
         kfree(buffer);
-        fs_close(fd);
         return;
     }
 
+    // Null terminate the buffer
     buffer[bytes_read] = '\0';
+
+    screen_write_color("[DEBUG] File contents:\n", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
+    screen_write_color("--- BEGIN ---\n", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
 
     // Display contents
     screen_write(buffer);
-    screen_write("\n\n");
+
+    screen_write_color("\n--- END ---\n", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
+    screen_write("\n");
 
     kfree(buffer);
-    fs_close(fd);
 }
 
 /**
@@ -1482,33 +1541,61 @@ static void cmd_write(const char *args) {
     char *filename = args_copy;
     char *text = space + 1;
 
+    screen_write_color("[DEBUG] Filename: ", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
+    screen_write(filename);
+    screen_write("\n");
+    screen_write_color("[DEBUG] Text: ", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
+    screen_write(text);
+    screen_write(" (");
+    screen_write_dec(strlen(text));
+    screen_write(" bytes)\n");
+
     // Check if file exists
     int file_exists = fs_exists(filename);
+    screen_write_color("[DEBUG] File exists: ", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
+    screen_write(file_exists ? "YES\n" : "NO\n");
+
     int fd;
 
     if (file_exists) {
         // File exists - open for writing (will overwrite)
+        screen_write_color("[DEBUG] Opening existing file for writing...\n", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
         fd = fs_open(filename, FS_OPEN_WRITE);
     } else {
         // File doesn't exist - create it
+        screen_write_color("[DEBUG] Creating new file...\n", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
         if (fs_create(filename, FS_TYPE_FILE) < 0) {
             screen_write_color("Error: Failed to create file '", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
             screen_write(filename);
             screen_write("'\n\n");
             return;
         }
+        screen_write_color("[DEBUG] File created, opening for writing...\n", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
         fd = fs_open(filename, FS_OPEN_WRITE);
     }
 
     if (fd < 0) {
-        screen_write_color("Error: Failed to open file\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
-        screen_write("\n");
+        screen_write_color("Error: Failed to open file (fd=", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
+        screen_write_dec(fd);
+        screen_write(")\n\n");
         return;
     }
 
+    screen_write_color("[DEBUG] File opened successfully, fd=", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
+    screen_write_dec(fd);
+    screen_write("\n");
+
     // Write text to file
     int text_len = strlen(text);
+    screen_write_color("[DEBUG] Calling fs_write with ", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
+    screen_write_dec(text_len);
+    screen_write(" bytes...\n");
+
     int bytes_written = fs_write(fd, text, text_len);
+
+    screen_write_color("[DEBUG] fs_write returned: ", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
+    screen_write_dec(bytes_written);
+    screen_write(" bytes\n");
 
     if (bytes_written < 0) {
         screen_write_color("Error: Failed to write to file\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
@@ -1517,6 +1604,7 @@ static void cmd_write(const char *args) {
         return;
     }
 
+    screen_write_color("[DEBUG] Closing file...\n", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
     fs_close(fd);
 
     if (file_exists) {
@@ -1632,10 +1720,13 @@ void shell_process_command(char *command) {
     } else if (strcmp(cmd, "banner") == 0) {
         cmd_banner();
     } else if (strcmp(cmd, "ramdisk") == 0) {
+        screen_write_color("[DISPATCHER] Matched 'ramdisk' command, calling cmd_ramdisk()\n", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
         cmd_ramdisk();
     } else if (strcmp(cmd, "rdformat") == 0) {
+        screen_write_color("[DISPATCHER] Matched 'rdformat' command, calling cmd_rdformat()\n", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
         cmd_rdformat();
     } else if (strcmp(cmd, "rdinfo") == 0) {
+        screen_write_color("[DISPATCHER] Matched 'rdinfo' command, calling cmd_rdinfo()\n", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
         cmd_rdinfo();
     } else if (strcmp(cmd, "fsformat") == 0) {
         cmd_fsformat();

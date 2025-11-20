@@ -4,6 +4,7 @@
 #include "../include/string.h"
 #include "../include/heap.h"
 #include "../include/timer.h"
+#include "../include/screen.h"
 
 // Global file system state
 static fs_superblock_t superblock;
@@ -31,24 +32,31 @@ static int dir_remove_entry(uint32_t dir_inode, const char *name);
  * Initialize file system (mount)
  */
 void fs_init(void) {
+    screen_write_color("[FS_INIT] Starting file system mount...\n", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
+
     // Check if RAM disk is initialized
     if (!ramdisk_is_initialized()) {
+        screen_write_color("[FS_INIT] ERROR: RAM disk not initialized!\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
         return;
     }
+    screen_write_color("[FS_INIT] RAM disk is initialized\n", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
 
     // Allocate bitmaps in kernel heap
     inode_bitmap = (uint8_t *)kmalloc(FS_BLOCK_SIZE);
     data_bitmap = (uint8_t *)kmalloc(FS_BLOCK_SIZE);
 
     if (!inode_bitmap || !data_bitmap) {
+        screen_write_color("[FS_INIT] ERROR: Failed to allocate bitmaps!\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
         if (inode_bitmap) kfree(inode_bitmap);
         if (data_bitmap) kfree(data_bitmap);
         return;
     }
+    screen_write_color("[FS_INIT] Bitmaps allocated\n", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
 
     // Read superblock from disk
     uint8_t *temp_block = (uint8_t *)kmalloc(FS_BLOCK_SIZE);
     if (!temp_block) {
+        screen_write_color("[FS_INIT] ERROR: Failed to allocate temp block!\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
         kfree(inode_bitmap);
         kfree(data_bitmap);
         return;
@@ -58,8 +66,17 @@ void fs_init(void) {
     memcpy(&superblock, temp_block, sizeof(fs_superblock_t));
     kfree(temp_block);
 
+    screen_write_color("[FS_INIT] Superblock read, magic=0x", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
+    screen_write_hex(superblock.magic);
+    screen_write("\n");
+
     // Check magic number
     if (superblock.magic != FS_MAGIC) {
+        screen_write_color("[FS_INIT] ERROR: Invalid magic number! Expected 0x", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
+        screen_write_hex(FS_MAGIC);
+        screen_write(", got 0x");
+        screen_write_hex(superblock.magic);
+        screen_write("\n");
         kfree(inode_bitmap);
         kfree(data_bitmap);
         return;
@@ -68,6 +85,7 @@ void fs_init(void) {
     // Load bitmaps from disk
     ramdisk_read_block(FS_INODE_BITMAP_BLOCK, inode_bitmap);
     ramdisk_read_block(FS_DATA_BITMAP_BLOCK, data_bitmap);
+    screen_write_color("[FS_INIT] Bitmaps loaded from disk\n", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
 
     // Initialize open files table
     for (int i = 0; i < FS_MAX_OPEN_FILES; i++) {
@@ -75,14 +93,18 @@ void fs_init(void) {
     }
 
     fs_initialized = 1;
+    screen_write_color("[FS_INIT] File system mounted successfully!\n", MAKE_COLOR(COLOR_GREEN, COLOR_BLACK));
 }
 
 /**
  * Format file system (create new empty FS)
  */
 void fs_format(void) {
+    screen_write_color("[FS_FORMAT] Starting file system format...\n", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
+
     // Check if RAM disk is initialized
     if (!ramdisk_is_initialized()) {
+        screen_write_color("[FS_FORMAT] ERROR: RAM disk not initialized!\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
         return;
     }
 
@@ -95,8 +117,10 @@ void fs_format(void) {
     }
 
     if (!inode_bitmap || !data_bitmap) {
+        screen_write_color("[FS_FORMAT] ERROR: Failed to allocate bitmaps!\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
         return;
     }
+    screen_write_color("[FS_FORMAT] Bitmaps allocated\n", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
 
     // Initialize superblock
     memset(&superblock, 0, sizeof(fs_superblock_t));
@@ -155,8 +179,10 @@ void fs_format(void) {
     // Write bitmaps to disk
     ramdisk_write_block(FS_INODE_BITMAP_BLOCK, inode_bitmap);
     ramdisk_write_block(FS_DATA_BITMAP_BLOCK, data_bitmap);
+    screen_write_color("[FS_FORMAT] Bitmaps written to disk\n", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
 
     fs_initialized = 1;
+    screen_write_color("[FS_FORMAT] File system formatted successfully!\n", MAKE_COLOR(COLOR_GREEN, COLOR_BLACK));
 }
 
 /**
@@ -522,22 +548,43 @@ int fs_unlink(const char *path) {
  * Open file
  */
 int fs_open(const char *path, uint32_t flags) {
-    if (!fs_initialized) return -1;
+    screen_write_color("[FS_OPEN] Opening file: ", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
+    screen_write(path);
+    screen_write(", flags=0x");
+    screen_write_hex(flags);
+    screen_write("\n");
+
+    if (!fs_initialized) {
+        screen_write_color("[FS_OPEN] ERROR: File system not initialized!\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
+        return -1;
+    }
 
     // Look up inode
     uint32_t inode_num;
     if (path_lookup(path, &inode_num) < 0) {
+        screen_write_color("[FS_OPEN] File not found\n", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
         // If CREATE flag, create it
         if (flags & FS_OPEN_CREATE) {
+            screen_write_color("[FS_OPEN] Creating file...\n", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
             if (fs_create(path, FS_TYPE_FILE) < 0) {
+                screen_write_color("[FS_OPEN] ERROR: Failed to create file!\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
                 return -1;
             }
             if (path_lookup(path, &inode_num) < 0) {
+                screen_write_color("[FS_OPEN] ERROR: Created file but can't find it!\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
                 return -1;
             }
+            screen_write_color("[FS_OPEN] File created, inode=", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
+            screen_write_dec(inode_num);
+            screen_write("\n");
         } else {
+            screen_write_color("[FS_OPEN] ERROR: File not found and CREATE flag not set!\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
             return -1;  // Not found
         }
+    } else {
+        screen_write_color("[FS_OPEN] File found, inode=", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
+        screen_write_dec(inode_num);
+        screen_write("\n");
     }
 
     // Find free file descriptor
@@ -550,6 +597,7 @@ int fs_open(const char *path, uint32_t flags) {
     }
 
     if (fd < 0) {
+        screen_write_color("[FS_OPEN] ERROR: Too many open files!\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
         return -1;  // Too many open files
     }
 
@@ -558,6 +606,10 @@ int fs_open(const char *path, uint32_t flags) {
     open_files[fd].position = 0;
     open_files[fd].flags = flags;
     open_files[fd].in_use = 1;
+
+    screen_write_color("[FS_OPEN] File opened successfully, fd=", MAKE_COLOR(COLOR_GREEN, COLOR_BLACK));
+    screen_write_dec(fd);
+    screen_write("\n");
 
     return fd;
 }
@@ -582,28 +634,47 @@ int fs_close(int fd) {
  * Read from file
  */
 int fs_read(int fd, void *buf, uint32_t size) {
+    screen_write_color("[FS_READ] Reading from fd=", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
+    screen_write_dec(fd);
+    screen_write(", size=");
+    screen_write_dec(size);
+    screen_write(" bytes\n");
+
     if (fd < 0 || fd >= FS_MAX_OPEN_FILES || !open_files[fd].in_use) {
+        screen_write_color("[FS_READ] ERROR: Invalid file descriptor!\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
         return -1;
     }
 
     if (!(open_files[fd].flags & FS_OPEN_READ)) {
+        screen_write_color("[FS_READ] ERROR: File not open for reading!\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
         return -1;  // Not open for reading
     }
 
     // Read inode
     fs_inode_t inode;
     if (read_inode(open_files[fd].inode, &inode) < 0) {
+        screen_write_color("[FS_READ] ERROR: Failed to read inode!\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
         return -1;
     }
 
+    screen_write_color("[FS_READ] Inode read, inode=", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
+    screen_write_dec(open_files[fd].inode);
+    screen_write(", file size=");
+    screen_write_dec(inode.size);
+    screen_write(" bytes\n");
+
     // Can't read past end of file
     if (open_files[fd].position >= inode.size) {
+        screen_write_color("[FS_READ] At EOF, returning 0\n", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
         return 0;  // EOF
     }
 
     // Limit read to file size
     if (open_files[fd].position + size > inode.size) {
         size = inode.size - open_files[fd].position;
+        screen_write_color("[FS_READ] Limiting read to ", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
+        screen_write_dec(size);
+        screen_write(" bytes\n");
     }
 
     uint32_t bytes_read = 0;
@@ -630,6 +701,11 @@ int fs_read(int fd, void *buf, uint32_t size) {
     }
 
     kfree(block_data);
+
+    screen_write_color("[FS_READ] Read completed, bytes_read=", MAKE_COLOR(COLOR_GREEN, COLOR_BLACK));
+    screen_write_dec(bytes_read);
+    screen_write("\n");
+
     return bytes_read;
 }
 
@@ -637,19 +713,31 @@ int fs_read(int fd, void *buf, uint32_t size) {
  * Write to file
  */
 int fs_write(int fd, const void *buf, uint32_t size) {
+    screen_write_color("[FS_WRITE] Writing to fd=", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
+    screen_write_dec(fd);
+    screen_write(", size=");
+    screen_write_dec(size);
+    screen_write(" bytes\n");
+
     if (fd < 0 || fd >= FS_MAX_OPEN_FILES || !open_files[fd].in_use) {
+        screen_write_color("[FS_WRITE] ERROR: Invalid file descriptor!\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
         return -1;
     }
 
     if (!(open_files[fd].flags & FS_OPEN_WRITE)) {
+        screen_write_color("[FS_WRITE] ERROR: File not open for writing!\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
         return -1;  // Not open for writing
     }
 
     // Read inode
     fs_inode_t inode;
     if (read_inode(open_files[fd].inode, &inode) < 0) {
+        screen_write_color("[FS_WRITE] ERROR: Failed to read inode!\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
         return -1;
     }
+    screen_write_color("[FS_WRITE] Inode read successfully, inode=", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
+    screen_write_dec(open_files[fd].inode);
+    screen_write("\n");
 
     uint32_t bytes_written = 0;
     const uint8_t *src = (const uint8_t *)buf;
@@ -698,6 +786,12 @@ int fs_write(int fd, const void *buf, uint32_t size) {
     // Update inode
     inode.modified = timer_get_ticks();
     write_inode(open_files[fd].inode, &inode);
+
+    screen_write_color("[FS_WRITE] Write completed, bytes_written=", MAKE_COLOR(COLOR_GREEN, COLOR_BLACK));
+    screen_write_dec(bytes_written);
+    screen_write(", new file size=");
+    screen_write_dec(inode.size);
+    screen_write("\n");
 
     return bytes_written;
 }

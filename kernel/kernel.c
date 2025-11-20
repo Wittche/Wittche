@@ -317,10 +317,29 @@ void kernel_main(void) {
     ramdisk_init(); // RAM disk (virtual disk in memory) - after paging!
 
     // Initialize file system (format on first boot, then mount)
+    screen_write_color("[KERNEL] ", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
+    screen_write("Checking file system status...\n");
+
     if (!fs_is_initialized()) {
+        screen_write_color("[KERNEL] ", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
+        screen_write("File system not initialized, formatting...\n");
         fs_format();  // Create new file system
+        screen_write_color("[KERNEL] ", MAKE_COLOR(COLOR_GREEN, COLOR_BLACK));
+        screen_write("Format complete, mounting file system...\n");
+    } else {
+        screen_write_color("[KERNEL] ", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
+        screen_write("File system already initialized, mounting...\n");
     }
+
     fs_init();  // Mount file system
+
+    if (fs_is_initialized()) {
+        screen_write_color("[KERNEL] ", MAKE_COLOR(COLOR_GREEN, COLOR_BLACK));
+        screen_write("File system ready!\n");
+    } else {
+        screen_write_color("[KERNEL] ", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
+        screen_write("ERROR: File system mount failed!\n");
+    }
 
     // Initialize process management (multitasking)
     process_init();
