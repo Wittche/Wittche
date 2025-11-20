@@ -905,17 +905,24 @@ static void cmd_usermodetest(void) {
  */
 static void cmd_rdinfo(void) {
     kprintf("\n");
+    kprintf("DEBUG: rdinfo command started\n");
     kprintf_color(MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK), "RAM Disk Information\n");
     kprintf_color(MAKE_COLOR(COLOR_CYAN, COLOR_BLACK), "====================\n");
     kprintf("\n");
 
-    if (!ramdisk_is_initialized()) {
+    kprintf("DEBUG: About to check ramdisk_is_initialized()\n");
+    int is_init = ramdisk_is_initialized();
+    kprintf("DEBUG: ramdisk_is_initialized() returned: %d\n", is_init);
+
+    if (!is_init) {
         kprintf_color(MAKE_COLOR(COLOR_RED, COLOR_BLACK), "RAM Disk is NOT initialized!\n");
         kprintf("\n");
         return;
     }
 
+    kprintf("DEBUG: About to call ramdisk_get_info()\n");
     ramdisk_t *rd = ramdisk_get_info();
+    kprintf("DEBUG: ramdisk_get_info() returned: 0x%X\n", (uint32_t)rd);
 
     kprintf_color(MAKE_COLOR(COLOR_GREEN, COLOR_BLACK), "Status:\n");
     kprintf("  Initialized:     ");
@@ -943,18 +950,22 @@ static void cmd_rdinfo(void) {
  */
 static void cmd_rdformat(void) {
     kprintf("\n");
+    kprintf("DEBUG: rdformat command started\n");
     kprintf_color(MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK), "RAM Disk Format\n");
     kprintf_color(MAKE_COLOR(COLOR_CYAN, COLOR_BLACK), "===============\n");
     kprintf("\n");
 
+    kprintf("DEBUG: Checking if ramdisk is initialized\n");
     if (!ramdisk_is_initialized()) {
         kprintf_color(MAKE_COLOR(COLOR_RED, COLOR_BLACK), "Error: RAM Disk is not initialized!\n");
         kprintf("\n");
         return;
     }
 
+    kprintf("DEBUG: Ramdisk is initialized, calling ramdisk_format()\n");
     kprintf("Formatting RAM disk (clearing all data)...\n");
     ramdisk_format();
+    kprintf("DEBUG: ramdisk_format() completed\n");
     kprintf_color(MAKE_COLOR(COLOR_GREEN, COLOR_BLACK), "RAM Disk formatted successfully!\n");
     kprintf("All blocks cleared to zero.\n");
     kprintf("\n");
@@ -965,17 +976,21 @@ static void cmd_rdformat(void) {
  */
 static void cmd_ramdisk(void) {
     kprintf("\n");
+    kprintf("DEBUG: ramdisk test command started\n");
     kprintf_color(MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK), "RAM Disk Test\n");
     kprintf_color(MAKE_COLOR(COLOR_CYAN, COLOR_BLACK), "=============\n");
     kprintf("\n");
 
+    kprintf("DEBUG: Checking initialization\n");
     if (!ramdisk_is_initialized()) {
         kprintf_color(MAKE_COLOR(COLOR_RED, COLOR_BLACK), "Error: RAM Disk is not initialized!\n");
         kprintf("\n");
         return;
     }
 
+    kprintf("DEBUG: Getting ramdisk info\n");
     ramdisk_t *rd = ramdisk_get_info();
+    kprintf("DEBUG: Got ramdisk info, starting tests\n");
 
     uint8_t write_buffer[512];
     uint8_t read_buffer[512];

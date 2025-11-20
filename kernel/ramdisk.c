@@ -13,12 +13,17 @@ static ramdisk_t ramdisk;
  */
 void ramdisk_init(void) {
     kprintf("RAM Disk: Initializing...\n");
+    kprintf("RAM Disk: DEBUG - About to allocate %d bytes\n", RAMDISK_SIZE);
 
     // Allocate memory for RAM disk
     ramdisk.data = (uint8_t *)kmalloc(RAMDISK_SIZE);
+
+    kprintf("RAM Disk: DEBUG - kmalloc returned: 0x%X\n", (uint32_t)ramdisk.data);
+
     if (!ramdisk.data) {
         kprintf("RAM Disk: ERROR - Failed to allocate memory!\n");
         ramdisk.initialized = 0;
+        kprintf("RAM Disk: DEBUG - initialized set to 0\n");
         return;
     }
 
@@ -28,6 +33,8 @@ void ramdisk_init(void) {
     ramdisk.block_count = RAMDISK_BLOCK_COUNT;
     ramdisk.initialized = 1;
 
+    kprintf("RAM Disk: DEBUG - initialized set to 1\n");
+
     // Clear the disk
     memset(ramdisk.data, 0, RAMDISK_SIZE);
 
@@ -35,6 +42,7 @@ void ramdisk_init(void) {
     kprintf("  Size: %d bytes (%d KB)\n", RAMDISK_SIZE, RAMDISK_SIZE / 1024);
     kprintf("  Block Size: %d bytes\n", RAMDISK_BLOCK_SIZE);
     kprintf("  Block Count: %d blocks\n", RAMDISK_BLOCK_COUNT);
+    kprintf("RAM Disk: DEBUG - Init complete, initialized = %d\n", ramdisk.initialized);
 }
 
 /**
