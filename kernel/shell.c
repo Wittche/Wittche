@@ -909,13 +909,20 @@ static void cmd_rdinfo(void) {
     screen_write_color("====================\n", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
     screen_write("\n");
 
+    screen_write("DEBUG: Before ramdisk_is_initialized check\n");
+
     if (!ramdisk_is_initialized()) {
         screen_write_color("RAM Disk is NOT initialized!\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
         screen_write("\n");
         return;
     }
 
+    screen_write("DEBUG: RAM disk is initialized\n");
+    screen_write("DEBUG: Before ramdisk_get_info\n");
+
     ramdisk_t *rd = ramdisk_get_info();
+
+    screen_write("DEBUG: After ramdisk_get_info, got pointer\n");
 
     screen_write_color("Status:\n", MAKE_COLOR(COLOR_GREEN, COLOR_BLACK));
     screen_write("  Initialized:     ");
@@ -956,11 +963,15 @@ static void cmd_rdformat(void) {
     screen_write_color("===============\n", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
     screen_write("\n");
 
+    screen_write("DEBUG: Before ramdisk_is_initialized check\n");
+
     if (!ramdisk_is_initialized()) {
         screen_write_color("Error: RAM Disk is not initialized!\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
         screen_write("\n");
         return;
     }
+
+    screen_write("DEBUG: RAM disk is initialized\n");
 
     screen_write("Formatting RAM disk (clearing all data)...\n");
     ramdisk_format();
@@ -978,15 +989,26 @@ static void cmd_ramdisk(void) {
     screen_write_color("=============\n", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
     screen_write("\n");
 
+    screen_write("DEBUG: Before ramdisk_is_initialized check\n");
+
     if (!ramdisk_is_initialized()) {
         screen_write_color("Error: RAM Disk is not initialized!\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
         screen_write("\n");
         return;
     }
 
+    screen_write("DEBUG: RAM disk is initialized\n");
+    screen_write("DEBUG: Before ramdisk_get_info\n");
+
     ramdisk_t *rd = ramdisk_get_info();
+
+    screen_write("DEBUG: After ramdisk_get_info\n");
+    screen_write("DEBUG: Before buffer allocation\n");
+
     uint8_t write_buffer[512];
     uint8_t read_buffer[512];
+
+    screen_write("DEBUG: After buffer allocation\n");
 
     // Test 1: Write test pattern to block 0
     screen_write_color("Test 1: Write Pattern to Block 0\n", MAKE_COLOR(COLOR_GREEN, COLOR_BLACK));
