@@ -48,6 +48,22 @@ start:
     int 0x13            ; Call BIOS
     jc disk_error       ; Jump if carry flag set (error)
 
+    ; Read 3: Cyl 1, Head 0, Sectors 1-63 (63 sectors) to 0x1FA0:0x0000
+    ; Previous: 125 sectors * 512 bytes = 64000 = 0xFA00
+    ; Next address: 0x10000 + 0xFA00 = 0x1FA00 = segment 0x1FA0
+    ; This gives us total 188 sectors (~96KB) for kernel
+    mov ah, 0x02        ; BIOS read sector function
+    mov al, 63          ; Read 63 sectors
+    mov ch, 1           ; Cylinder 1 (next cylinder)
+    mov cl, 1           ; Start from sector 1
+    mov dh, 0           ; Head 0
+    mov dl, 0x80        ; Hard drive
+    mov bx, 0x1FA0      ; ES = 0x1FA0
+    mov es, bx
+    xor bx, bx          ; BX = 0x0000
+    int 0x13            ; Call BIOS
+    jc disk_error       ; Jump if carry flag set (error)
+
     ; Print success message
     mov si, msg_success
     call print_string
