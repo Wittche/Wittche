@@ -54,20 +54,23 @@ void ramdisk_init(void) {
 int ramdisk_read_block(uint32_t block_num, void *buffer) {
     // Check if initialized
     if (!ramdisk.initialized) {
-        kprintf("RAM Disk: ERROR - Not initialized!\n");
+        screen_write("RAM Disk: ERROR - Not initialized!\n");
         return -1;
     }
 
     // Validate block number
     if (block_num >= ramdisk.block_count) {
-        kprintf("RAM Disk: ERROR - Invalid block number %d (max %d)\n",
-                block_num, ramdisk.block_count - 1);
+        screen_write("RAM Disk: ERROR - Invalid block number ");
+        screen_write_dec(block_num);
+        screen_write(" (max ");
+        screen_write_dec(ramdisk.block_count - 1);
+        screen_write(")\n");
         return -1;
     }
 
     // Validate buffer
     if (!buffer) {
-        kprintf("RAM Disk: ERROR - NULL buffer!\n");
+        screen_write("RAM Disk: ERROR - NULL buffer!\n");
         return -1;
     }
 
@@ -89,20 +92,23 @@ int ramdisk_read_block(uint32_t block_num, void *buffer) {
 int ramdisk_write_block(uint32_t block_num, const void *buffer) {
     // Check if initialized
     if (!ramdisk.initialized) {
-        kprintf("RAM Disk: ERROR - Not initialized!\n");
+        screen_write("RAM Disk: ERROR - Not initialized!\n");
         return -1;
     }
 
     // Validate block number
     if (block_num >= ramdisk.block_count) {
-        kprintf("RAM Disk: ERROR - Invalid block number %d (max %d)\n",
-                block_num, ramdisk.block_count - 1);
+        screen_write("RAM Disk: ERROR - Invalid block number ");
+        screen_write_dec(block_num);
+        screen_write(" (max ");
+        screen_write_dec(ramdisk.block_count - 1);
+        screen_write(")\n");
         return -1;
     }
 
     // Validate buffer
     if (!buffer) {
-        kprintf("RAM Disk: ERROR - NULL buffer!\n");
+        screen_write("RAM Disk: ERROR - NULL buffer!\n");
         return -1;
     }
 
@@ -121,13 +127,13 @@ int ramdisk_write_block(uint32_t block_num, const void *buffer) {
  */
 void ramdisk_format(void) {
     if (!ramdisk.initialized) {
-        kprintf("RAM Disk: ERROR - Not initialized!\n");
+        screen_write("RAM Disk: ERROR - Not initialized!\n");
         return;
     }
 
-    kprintf("RAM Disk: Formatting...\n");
+    screen_write("RAM Disk: Formatting...\n");
     memset(ramdisk.data, 0, ramdisk.size);
-    kprintf("RAM Disk: Format complete\n");
+    screen_write("RAM Disk: Format complete\n");
 }
 
 /**
