@@ -2,7 +2,6 @@
 #include "../include/ramdisk.h"
 #include "../include/string.h"
 #include "../include/heap.h"
-#include "../include/screen.h"
 
 // Global RAM disk instance
 static ramdisk_t ramdisk;
@@ -12,18 +11,10 @@ static ramdisk_t ramdisk;
  * Allocates memory and prepares the virtual disk
  */
 void ramdisk_init(void) {
-    screen_write("=== RAMDISK INIT START ===\n");
-    screen_write("About to allocate memory\n");
-
     // Allocate memory for RAM disk
     ramdisk.data = (uint8_t *)kmalloc(RAMDISK_SIZE);
 
-    screen_write("kmalloc returned: 0x");
-    screen_write_hex((uint32_t)ramdisk.data);
-    screen_write("\n");
-
     if (!ramdisk.data) {
-        screen_write("ERROR: kmalloc FAILED!\n");
         ramdisk.initialized = 0;
         return;
     }
@@ -34,15 +25,8 @@ void ramdisk_init(void) {
     ramdisk.block_count = RAMDISK_BLOCK_COUNT;
     ramdisk.initialized = 1;
 
-    screen_write("Set initialized to: ");
-    screen_write_dec(ramdisk.initialized);
-    screen_write("\n");
-
     // Clear the disk
     memset(ramdisk.data, 0, RAMDISK_SIZE);
-
-    screen_write("RAM Disk: SUCCESS!\n");
-    screen_write("=== RAMDISK INIT COMPLETE ===\n");
 }
 
 /**
@@ -54,23 +38,16 @@ void ramdisk_init(void) {
 int ramdisk_read_block(uint32_t block_num, void *buffer) {
     // Check if initialized
     if (!ramdisk.initialized) {
-        screen_write("RAM Disk: ERROR - Not initialized!\n");
         return -1;
     }
 
     // Validate block number
     if (block_num >= ramdisk.block_count) {
-        screen_write("RAM Disk: ERROR - Invalid block number ");
-        screen_write_dec(block_num);
-        screen_write(" (max ");
-        screen_write_dec(ramdisk.block_count - 1);
-        screen_write(")\n");
         return -1;
     }
 
     // Validate buffer
     if (!buffer) {
-        screen_write("RAM Disk: ERROR - NULL buffer!\n");
         return -1;
     }
 
@@ -92,23 +69,16 @@ int ramdisk_read_block(uint32_t block_num, void *buffer) {
 int ramdisk_write_block(uint32_t block_num, const void *buffer) {
     // Check if initialized
     if (!ramdisk.initialized) {
-        screen_write("RAM Disk: ERROR - Not initialized!\n");
         return -1;
     }
 
     // Validate block number
     if (block_num >= ramdisk.block_count) {
-        screen_write("RAM Disk: ERROR - Invalid block number ");
-        screen_write_dec(block_num);
-        screen_write(" (max ");
-        screen_write_dec(ramdisk.block_count - 1);
-        screen_write(")\n");
         return -1;
     }
 
     // Validate buffer
     if (!buffer) {
-        screen_write("RAM Disk: ERROR - NULL buffer!\n");
         return -1;
     }
 
@@ -127,13 +97,10 @@ int ramdisk_write_block(uint32_t block_num, const void *buffer) {
  */
 void ramdisk_format(void) {
     if (!ramdisk.initialized) {
-        screen_write("RAM Disk: ERROR - Not initialized!\n");
         return;
     }
 
-    screen_write("RAM Disk: Formatting...\n");
     memset(ramdisk.data, 0, ramdisk.size);
-    screen_write("RAM Disk: Format complete\n");
 }
 
 /**
@@ -149,8 +116,5 @@ ramdisk_t *ramdisk_get_info(void) {
  * Returns: 1 if initialized, 0 otherwise
  */
 int ramdisk_is_initialized(void) {
-    screen_write("[ramdisk_is_initialized] Checking: ramdisk.initialized = ");
-    screen_write_dec(ramdisk.initialized);
-    screen_write("\n");
     return ramdisk.initialized;
 }
