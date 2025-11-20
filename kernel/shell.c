@@ -904,99 +904,84 @@ static void cmd_usermodetest(void) {
  * rdinfo command - display RAM disk information
  */
 static void cmd_rdinfo(void) {
-    // Test if screen_write_dec works
-    screen_write_dec(9999);
-    screen_write_dec(8888);
-    screen_write_dec(7777);
+    screen_write("\n");
+    screen_write("RAM Disk Information\n");
+    screen_write("====================\n");
+    screen_write("\n");
 
-    // Test if screen_putchar works
-    screen_putchar('A');
-    screen_putchar('B');
-    screen_putchar('C');
-    screen_putchar('\n');
-
-    // Test if screen_write works
-    screen_write("TEST: If you see this, screen_write works!\n");
-
-    // Don't call ANY ramdisk functions yet
-    return;
-
-    kprintf("RAM Disk Information\n");
-    kprintf("====================\n");
-    kprintf("\n");
-
-    // Test if kprintf works BEFORE calling ramdisk functions
-    kprintf("DEBUG: Before ramdisk_is_initialized\n");
-
-    int is_init = ramdisk_is_initialized();
-
-    // Test if kprintf works AFTER calling ramdisk functions
-    kprintf("DEBUG: After ramdisk_is_initialized, result = %d\n", is_init);
-
-    if (!is_init) {
-        kprintf("Error: RAM Disk is not initialized!\n");
-        kprintf("\n");
+    if (!ramdisk_is_initialized()) {
+        screen_write("Error: RAM Disk is not initialized!\n");
+        screen_write("\n");
         return;
     }
 
-    kprintf("DEBUG: Before ramdisk_get_info\n");
     ramdisk_t *rd = ramdisk_get_info();
-    kprintf("DEBUG: After ramdisk_get_info\n");
 
-    kprintf("Status:\n");
-    kprintf("  Initialized:     YES\n");
-    kprintf("  Base Address:    0x%X\n", (uint32_t)rd->data);
-    kprintf("\n");
+    screen_write("Status:\n");
+    screen_write("  Initialized:     YES\n");
+    screen_write("  Base Address:    0x");
+    screen_write_hex((uint32_t)rd->data);
+    screen_write("\n\n");
 
-    kprintf("Configuration:\n");
-    kprintf("  Total Size:      %d bytes (%d KB / %d MB)\n",
-            rd->size, rd->size / 1024, rd->size / (1024 * 1024));
-    kprintf("  Block Size:      %d bytes\n", rd->block_size);
-    kprintf("  Block Count:     %d blocks\n", rd->block_count);
-    kprintf("\n");
+    screen_write("Configuration:\n");
+    screen_write("  Total Size:      ");
+    screen_write_dec(rd->size);
+    screen_write(" bytes (");
+    screen_write_dec(rd->size / 1024);
+    screen_write(" KB / ");
+    screen_write_dec(rd->size / (1024 * 1024));
+    screen_write(" MB)\n");
 
-    kprintf("Technical Details:\n");
-    kprintf("  Type:            Virtual disk in RAM\n");
-    kprintf("  Speed:           Memory speed (very fast)\n");
-    kprintf("  Volatile:        Yes (data lost on reboot)\n");
-    kprintf("  Purpose:         Foundation for file system\n");
-    kprintf("\n");
+    screen_write("  Block Size:      ");
+    screen_write_dec(rd->block_size);
+    screen_write(" bytes\n");
+
+    screen_write("  Block Count:     ");
+    screen_write_dec(rd->block_count);
+    screen_write(" blocks\n\n");
+
+    screen_write("Technical Details:\n");
+    screen_write("  Type:            Virtual disk in RAM\n");
+    screen_write("  Speed:           Memory speed (very fast)\n");
+    screen_write("  Volatile:        Yes (data lost on reboot)\n");
+    screen_write("  Purpose:         Foundation for file system\n");
+    screen_write("\n");
 }
 
 /**
  * rdformat command - format RAM disk
  */
 static void cmd_rdformat(void) {
-    kprintf("\n");
-    kprintf("RAM Disk Format\n");
-    kprintf("===============\n");
-    kprintf("\n");
+    screen_write("\n");
+    screen_write("RAM Disk Format\n");
+    screen_write("===============\n");
+    screen_write("\n");
 
     if (!ramdisk_is_initialized()) {
-        kprintf("Error: RAM Disk is not initialized!\n");
-        kprintf("\n");
+        screen_write("Error: RAM Disk is not initialized!\n");
+        screen_write("\n");
         return;
     }
 
-    kprintf("Formatting RAM disk (clearing all data)...\n");
+    screen_write("Formatting RAM disk (clearing all data)...\n");
     ramdisk_format();
-    kprintf("RAM Disk formatted successfully!\n");
-    kprintf("All blocks cleared to zero.\n");
-    kprintf("\n");
+    screen_write("RAM Disk formatted successfully!\n");
+    screen_write("All blocks cleared to zero.\n");
+    screen_write("\n");
 }
 
 /**
  * ramdisk command - test RAM disk read/write
  */
 static void cmd_ramdisk(void) {
-    kprintf("\n");
-    kprintf("RAM Disk Test\n");
-    kprintf("=============\n");
-    kprintf("\n");
+    screen_write("\n");
+    screen_write("RAM Disk Test\n");
+    screen_write("=============\n");
+    screen_write("\n");
 
     if (!ramdisk_is_initialized()) {
-        kprintf("Error: RAM Disk is not initialized!\n");
-        kprintf("\n");
+        screen_write("Error: RAM Disk is not initialized!\n");
+        screen_write("\n");
         return;
     }
 
@@ -1008,49 +993,49 @@ static void cmd_ramdisk(void) {
     uint8_t *read_buffer = (uint8_t *)kmalloc(512);
 
     if (!write_buffer || !read_buffer) {
-        kprintf_color(MAKE_COLOR(COLOR_RED, COLOR_BLACK), "Error: Failed to allocate test buffers!\n");
+        screen_write_color("Error: Failed to allocate test buffers!\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
         if (write_buffer) kfree(write_buffer);
         if (read_buffer) kfree(read_buffer);
-        kprintf("\n");
+        screen_write("\n");
         return;
     }
 
     // Test 1: Write test pattern to block 0
-    kprintf("Test 1: Write Pattern to Block 0\n");
-    kprintf("  Preparing test data...\n");
+    screen_write("Test 1: Write Pattern to Block 0\n");
+    screen_write("  Preparing test data...\n");
 
     // Fill buffer with pattern
     for (int i = 0; i < 512; i++) {
         write_buffer[i] = (uint8_t)(i % 256);
     }
 
-    kprintf("  Writing block 0...\n");
+    screen_write("  Writing block 0...\n");
     if (ramdisk_write_block(0, write_buffer) == 0) {
-        kprintf("  SUCCESS: Block written\n");
+        screen_write("  SUCCESS: Block written\n");
     } else {
-        kprintf("  FAILED: Write error\n");
-        kprintf("\n");
+        screen_write("  FAILED: Write error\n");
+        screen_write("\n");
         kfree(write_buffer);
         kfree(read_buffer);
         return;
     }
-    kprintf("\n");
+    screen_write("\n");
 
     // Test 2: Read back and verify
-    kprintf("Test 2: Read and Verify Block 0\n");
-    kprintf("  Reading block 0...\n");
+    screen_write("Test 2: Read and Verify Block 0\n");
+    screen_write("  Reading block 0...\n");
 
     if (ramdisk_read_block(0, read_buffer) == 0) {
-        kprintf("  SUCCESS: Block read\n");
+        screen_write("  SUCCESS: Block read\n");
     } else {
-        kprintf("  FAILED: Read error\n");
-        kprintf("\n");
+        screen_write("  FAILED: Read error\n");
+        screen_write("\n");
         kfree(write_buffer);
         kfree(read_buffer);
         return;
     }
 
-    kprintf("  Verifying data...\n");
+    screen_write("  Verifying data...\n");
     int errors = 0;
     for (int i = 0; i < 512; i++) {
         if (read_buffer[i] != write_buffer[i]) {
@@ -1059,46 +1044,52 @@ static void cmd_ramdisk(void) {
     }
 
     if (errors == 0) {
-        kprintf("  SUCCESS: Data verified (0 errors)\n");
+        screen_write("  SUCCESS: Data verified (0 errors)\n");
     } else {
-        kprintf("  FAILED: %d byte mismatches\n", errors);
+        screen_write("  FAILED: ");
+        screen_write_dec(errors);
+        screen_write(" byte mismatches\n");
     }
-    kprintf("\n");
+    screen_write("\n");
 
     // Test 3: Write ASCII text to block 1
-    kprintf("Test 3: Write ASCII Text to Block 1\n");
+    screen_write("Test 3: Write ASCII Text to Block 1\n");
     memset(write_buffer, 0, 512);
     const char *test_msg = "Hello from Wittche OS RAM Disk! This is a test message.";
     strcpy((char *)write_buffer, test_msg);
 
-    kprintf("  Writing: '%s'\n", test_msg);
+    screen_write("  Writing: '");
+    screen_write(test_msg);
+    screen_write("'\n");
     ramdisk_write_block(1, write_buffer);
-    kprintf("  SUCCESS: Text written to block 1\n");
-    kprintf("\n");
+    screen_write("  SUCCESS: Text written to block 1\n");
+    screen_write("\n");
 
     // Test 4: Read back text
-    kprintf("Test 4: Read Text from Block 1\n");
+    screen_write("Test 4: Read Text from Block 1\n");
     memset(read_buffer, 0, 512);
     ramdisk_read_block(1, read_buffer);
-    kprintf("  Read back: '%s'\n", (char *)read_buffer);
+    screen_write("  Read back: '");
+    screen_write((char *)read_buffer);
+    screen_write("'\n");
 
     if (strcmp((char *)read_buffer, test_msg) == 0) {
-        kprintf("  SUCCESS: Text matches perfectly\n");
+        screen_write("  SUCCESS: Text matches perfectly\n");
     } else {
-        kprintf("  FAILED: Text mismatch\n");
+        screen_write("  FAILED: Text mismatch\n");
     }
-    kprintf("\n");
+    screen_write("\n");
 
     // Test 5: Multiple block operations
-    kprintf("Test 5: Multiple Block Operations\n");
-    kprintf("  Writing to 10 different blocks...\n");
+    screen_write("Test 5: Multiple Block Operations\n");
+    screen_write("  Writing to 10 different blocks...\n");
 
     for (int block = 10; block < 20; block++) {
         memset(write_buffer, 'A' + (block - 10), 512);
         ramdisk_write_block(block, write_buffer);
     }
 
-    kprintf("  Reading back and verifying...\n");
+    screen_write("  Reading back and verifying...\n");
     int block_errors = 0;
     for (int block = 10; block < 20; block++) {
         ramdisk_read_block(block, read_buffer);
@@ -1111,17 +1102,21 @@ static void cmd_ramdisk(void) {
     }
 
     if (block_errors == 0) {
-        kprintf("  SUCCESS: All 10 blocks verified\n");
+        screen_write("  SUCCESS: All 10 blocks verified\n");
     } else {
-        kprintf("  FAILED: %d blocks had errors\n", block_errors);
+        screen_write("  FAILED: ");
+        screen_write_dec(block_errors);
+        screen_write(" blocks had errors\n");
     }
-    kprintf("\n");
+    screen_write("\n");
 
     // Summary
-    kprintf("RAM Disk Test Complete!\n");
-    kprintf("Total blocks available: %d\n", rd->block_count);
-    kprintf("Blocks tested: 12 (blocks 0, 1, and 10-19)\n");
-    kprintf("\n");
+    screen_write("RAM Disk Test Complete!\n");
+    screen_write("Total blocks available: ");
+    screen_write_dec(rd->block_count);
+    screen_write("\n");
+    screen_write("Blocks tested: 12 (blocks 0, 1, and 10-19)\n");
+    screen_write("\n");
 
     // Clean up heap allocations
     kfree(write_buffer);
