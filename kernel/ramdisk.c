@@ -2,6 +2,7 @@
 #include "../include/ramdisk.h"
 #include "../include/string.h"
 #include "../include/heap.h"
+#include "../include/screen.h"
 
 // Global RAM disk instance
 static ramdisk_t ramdisk;
@@ -11,13 +12,22 @@ static ramdisk_t ramdisk;
  * Allocates memory and prepares the virtual disk
  */
 void ramdisk_init(void) {
+    screen_write_color("[RAMDISK_INIT] Initializing RAM disk...\n", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
+
     // Allocate memory for RAM disk
     ramdisk.data = (uint8_t *)kmalloc(RAMDISK_SIZE);
 
     if (!ramdisk.data) {
+        screen_write_color("[RAMDISK_INIT] ERROR: Failed to allocate memory!\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
         ramdisk.initialized = 0;
         return;
     }
+
+    screen_write_color("[RAMDISK_INIT] Memory allocated at 0x", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
+    screen_write_hex((uint32_t)ramdisk.data);
+    screen_write(", size=");
+    screen_write_dec(RAMDISK_SIZE);
+    screen_write(" bytes\n");
 
     // Set configuration
     ramdisk.size = RAMDISK_SIZE;
@@ -27,6 +37,12 @@ void ramdisk_init(void) {
 
     // Clear the disk
     memset(ramdisk.data, 0, RAMDISK_SIZE);
+
+    screen_write_color("[RAMDISK_INIT] RAM disk initialized successfully! ", MAKE_COLOR(COLOR_GREEN, COLOR_BLACK));
+    screen_write_dec(RAMDISK_BLOCK_COUNT);
+    screen_write(" blocks of ");
+    screen_write_dec(RAMDISK_BLOCK_SIZE);
+    screen_write(" bytes\n");
 }
 
 /**
