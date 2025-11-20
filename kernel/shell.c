@@ -1297,6 +1297,10 @@ static void cmd_cat(const char *args) {
         return;
     }
 
+    screen_write_color("[DEBUG] Reading file: ", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
+    screen_write(args);
+    screen_write("\n");
+
     // Check if file exists
     if (!fs_exists(args)) {
         screen_write_color("Error: File '", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
@@ -1305,6 +1309,8 @@ static void cmd_cat(const char *args) {
         return;
     }
 
+    screen_write_color("[DEBUG] File exists\n", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
+
     // Get file info
     fs_inode_t stat;
     if (fs_stat(args, &stat) < 0) {
@@ -1312,6 +1318,13 @@ static void cmd_cat(const char *args) {
         screen_write("\n");
         return;
     }
+
+    screen_write_color("[DEBUG] File size: ", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
+    screen_write_dec(stat.size);
+    screen_write(" bytes\n");
+    screen_write_color("[DEBUG] File mode: 0x", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
+    screen_write_hex(stat.mode);
+    screen_write("\n");
 
     // Check if it's a file (not directory)
     if ((stat.mode & 0xFF) != FS_TYPE_FILE) {
@@ -1329,14 +1342,24 @@ static void cmd_cat(const char *args) {
     }
 
     // Open file for reading
+    screen_write_color("[DEBUG] Opening file for reading...\n", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
     int fd = fs_open(args, FS_OPEN_READ);
     if (fd < 0) {
-        screen_write_color("Error: Failed to open file for reading\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
-        screen_write("\n");
+        screen_write_color("Error: Failed to open file for reading (fd=", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
+        screen_write_dec(fd);
+        screen_write(")\n\n");
         return;
     }
 
+    screen_write_color("[DEBUG] File opened, fd=", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
+    screen_write_dec(fd);
+    screen_write("\n");
+
     // Allocate buffer for file contents
+    screen_write_color("[DEBUG] Allocating buffer (", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
+    screen_write_dec(stat.size + 1);
+    screen_write(" bytes)...\n");
+
     char *buffer = (char *)kmalloc(stat.size + 1);
     if (!buffer) {
         screen_write_color("Error: Out of memory\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
@@ -1345,8 +1368,20 @@ static void cmd_cat(const char *args) {
         return;
     }
 
+    screen_write_color("[DEBUG] Buffer allocated at 0x", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
+    screen_write_hex((uint32_t)buffer);
+    screen_write("\n");
+
     // Read file
+    screen_write_color("[DEBUG] Calling fs_read for ", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
+    screen_write_dec(stat.size);
+    screen_write(" bytes...\n");
+
     int bytes_read = fs_read(fd, buffer, stat.size);
+
+    screen_write_color("[DEBUG] fs_read returned: ", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
+    screen_write_dec(bytes_read);
+    screen_write(" bytes\n");
 
     // Close file immediately after reading
     fs_close(fd);
@@ -1362,9 +1397,14 @@ static void cmd_cat(const char *args) {
     // Null terminate the buffer
     buffer[bytes_read] = '\0';
 
+    screen_write_color("[DEBUG] File contents:\n", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
+    screen_write_color("--- BEGIN ---\n", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
+
     // Display contents
     screen_write(buffer);
-    screen_write("\n\n");
+
+    screen_write_color("\n--- END ---\n", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
+    screen_write("\n");
 
     kfree(buffer);
 }
@@ -1485,33 +1525,61 @@ static void cmd_write(const char *args) {
     char *filename = args_copy;
     char *text = space + 1;
 
+    screen_write_color("[DEBUG] Filename: ", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
+    screen_write(filename);
+    screen_write("\n");
+    screen_write_color("[DEBUG] Text: ", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
+    screen_write(text);
+    screen_write(" (");
+    screen_write_dec(strlen(text));
+    screen_write(" bytes)\n");
+
     // Check if file exists
     int file_exists = fs_exists(filename);
+    screen_write_color("[DEBUG] File exists: ", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
+    screen_write(file_exists ? "YES\n" : "NO\n");
+
     int fd;
 
     if (file_exists) {
         // File exists - open for writing (will overwrite)
+        screen_write_color("[DEBUG] Opening existing file for writing...\n", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
         fd = fs_open(filename, FS_OPEN_WRITE);
     } else {
         // File doesn't exist - create it
+        screen_write_color("[DEBUG] Creating new file...\n", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
         if (fs_create(filename, FS_TYPE_FILE) < 0) {
             screen_write_color("Error: Failed to create file '", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
             screen_write(filename);
             screen_write("'\n\n");
             return;
         }
+        screen_write_color("[DEBUG] File created, opening for writing...\n", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
         fd = fs_open(filename, FS_OPEN_WRITE);
     }
 
     if (fd < 0) {
-        screen_write_color("Error: Failed to open file\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
-        screen_write("\n");
+        screen_write_color("Error: Failed to open file (fd=", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
+        screen_write_dec(fd);
+        screen_write(")\n\n");
         return;
     }
 
+    screen_write_color("[DEBUG] File opened successfully, fd=", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
+    screen_write_dec(fd);
+    screen_write("\n");
+
     // Write text to file
     int text_len = strlen(text);
+    screen_write_color("[DEBUG] Calling fs_write with ", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
+    screen_write_dec(text_len);
+    screen_write(" bytes...\n");
+
     int bytes_written = fs_write(fd, text, text_len);
+
+    screen_write_color("[DEBUG] fs_write returned: ", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
+    screen_write_dec(bytes_written);
+    screen_write(" bytes\n");
 
     if (bytes_written < 0) {
         screen_write_color("Error: Failed to write to file\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
@@ -1520,6 +1588,7 @@ static void cmd_write(const char *args) {
         return;
     }
 
+    screen_write_color("[DEBUG] Closing file...\n", MAKE_COLOR(COLOR_MAGENTA, COLOR_BLACK));
     fs_close(fd);
 
     if (file_exists) {
