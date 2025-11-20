@@ -904,34 +904,25 @@ static void cmd_usermodetest(void) {
  * rdinfo command - display RAM disk information
  */
 static void cmd_rdinfo(void) {
-    screen_write("\n");
-    screen_write("TEST A: Before calling ramdisk functions\n");
-    screen_write("\n");
+    // Test 1: Manual character output
+    screen_putchar('A');
+    screen_putchar('B');
+    screen_putchar('C');
+    screen_putchar('\n');
 
-    // Call ramdisk_is_initialized
-    int is_init = ramdisk_is_initialized();
+    // Test 2: Local string variable
+    const char *msg = "Local string test\n";
+    screen_write(msg);
 
-    screen_write("TEST B: After calling ramdisk_is_initialized\n");
-    screen_write("Result: ");
-    screen_write_dec(is_init);
-    screen_write("\n\n");
+    // Test 3: Direct string literal
+    screen_write("Direct literal test\n");
 
-    if (!is_init) {
-        screen_write("Error: RAM Disk is not initialized!\n");
-        screen_write("\n");
-        return;
-    }
+    // Test 4: Numbers work?
+    screen_write_dec(1234);
+    screen_putchar('\n');
 
-    screen_write("TEST C: Before calling ramdisk_get_info\n");
-    ramdisk_t *rd = ramdisk_get_info();
-    screen_write("TEST D: After calling ramdisk_get_info\n");
-
-    screen_write("Base address: 0x");
-    screen_write_hex((uint32_t)rd->data);
-    screen_write("\n");
-
-    screen_write("TEST E: End of function\n");
-    screen_write("\n");
+    // NO ramdisk functions called yet!
+    return;
 }
 
 /**
