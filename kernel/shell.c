@@ -904,7 +904,21 @@ static void cmd_usermodetest(void) {
  * rdinfo command - display RAM disk information
  */
 static void cmd_rdinfo(void) {
-    // Test with screen_write instead of kprintf!
+    // ULTIMATE TEST: Direct video memory write!
+    // This MUST work if the function is called at all
+    volatile uint16_t *video = (volatile uint16_t *)0xB8000;
+
+    // Write "XXXX" in bright white on black at current cursor position
+    // Get current cursor position first
+    int row = screen_get_cursor_row();
+    int col = screen_get_cursor_col();
+    int pos = row * 80 + col;
+
+    video[pos++] = 0x0F58; // 'X' in white
+    video[pos++] = 0x0F58; // 'X' in white
+    video[pos++] = 0x0F58; // 'X' in white
+    video[pos++] = 0x0F58; // 'X' in white
+
     screen_write("\n");
     screen_write("TEST 1: Can you see this?\n");
     screen_write("TEST 2: Using screen_write\n");
