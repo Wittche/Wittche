@@ -242,6 +242,9 @@ pid_t process_create_user_mode(const char *name, void (*entry_point)(void),
         return 0;
     }
 
+    // Mark as user mode process EARLY to prevent scheduler issues
+    proc->is_user_mode = 1;
+
     // Allocate physical memory for user stack
     uint32_t stack_physical = pmm_alloc_page();  // Allocate at least one page
     if (!stack_physical) {
@@ -285,9 +288,6 @@ pid_t process_create_user_mode(const char *name, void (*entry_point)(void),
 
     kprintf("[USERMODE] Mapped user code: virt=0x%x, phys=0x%x\n", USER_CODE_BASE, code_physical);
     kprintf("[USERMODE] Mapped user stack: virt=0x%x, phys=0x%x\n", USER_STACK_BASE - PAGE_SIZE, stack_physical);
-
-    // Mark as user mode process
-    proc->is_user_mode = 1;
 
     // Set priority
     proc->priority = priority > 255 ? 255 : priority;
