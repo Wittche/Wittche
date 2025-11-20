@@ -53,10 +53,22 @@ static void itoa_signed(int32_t value, char *str) {
 }
 
 /**
+ * Write a character using screen_putchar_internal (declared here to avoid circular dependency)
+ */
+extern void screen_putchar_internal_for_kprintf(char c);
+
+/**
  * Internal printf implementation
  */
 static void kprintf_internal(uint8_t color, int use_color, const char *format, va_list args) {
     char buffer[32];
+    uint8_t old_color = 0;
+
+    // If using color, set it once at the start
+    if (use_color) {
+        old_color = screen_get_color();
+        screen_set_color(color);
+    }
 
     while (*format) {
         if (*format == '%') {
@@ -68,10 +80,8 @@ static void kprintf_internal(uint8_t color, int use_color, const char *format, v
                     // Signed decimal integer
                     int32_t val = va_arg(args, int32_t);
                     itoa_signed(val, buffer);
-                    if (use_color) {
-                        screen_write_color(buffer, color);
-                    } else {
-                        screen_write(buffer);
+                    for (int i = 0; buffer[i] != '\0'; i++) {
+                        screen_putchar_internal_for_kprintf(buffer[i]);
                     }
                     break;
                 }
@@ -80,10 +90,8 @@ static void kprintf_internal(uint8_t color, int use_color, const char *format, v
                     // Unsigned decimal integer
                     uint32_t val = va_arg(args, uint32_t);
                     utoa(val, buffer, 10, 0);
-                    if (use_color) {
-                        screen_write_color(buffer, color);
-                    } else {
-                        screen_write(buffer);
+                    for (int i = 0; buffer[i] != '\0'; i++) {
+                        screen_putchar_internal_for_kprintf(buffer[i]);
                     }
                     break;
                 }
@@ -92,10 +100,8 @@ static void kprintf_internal(uint8_t color, int use_color, const char *format, v
                     // Hexadecimal (lowercase)
                     uint32_t val = va_arg(args, uint32_t);
                     utoa(val, buffer, 16, 0);
-                    if (use_color) {
-                        screen_write_color(buffer, color);
-                    } else {
-                        screen_write(buffer);
+                    for (int i = 0; buffer[i] != '\0'; i++) {
+                        screen_putchar_internal_for_kprintf(buffer[i]);
                     }
                     break;
                 }
@@ -104,10 +110,8 @@ static void kprintf_internal(uint8_t color, int use_color, const char *format, v
                     // Hexadecimal (uppercase)
                     uint32_t val = va_arg(args, uint32_t);
                     utoa(val, buffer, 16, 1);
-                    if (use_color) {
-                        screen_write_color(buffer, color);
-                    } else {
-                        screen_write(buffer);
+                    for (int i = 0; buffer[i] != '\0'; i++) {
+                        screen_putchar_internal_for_kprintf(buffer[i]);
                     }
                     break;
                 }
@@ -115,16 +119,11 @@ static void kprintf_internal(uint8_t color, int use_color, const char *format, v
                 case 'p': {
                     // Pointer (0x prefix + hex)
                     uint32_t val = va_arg(args, uint32_t);
-                    if (use_color) {
-                        screen_write_color("0x", color);
-                    } else {
-                        screen_write("0x");
-                    }
+                    screen_putchar_internal_for_kprintf('0');
+                    screen_putchar_internal_for_kprintf('x');
                     utoa(val, buffer, 16, 0);
-                    if (use_color) {
-                        screen_write_color(buffer, color);
-                    } else {
-                        screen_write(buffer);
+                    for (int i = 0; buffer[i] != '\0'; i++) {
+                        screen_putchar_internal_for_kprintf(buffer[i]);
                     }
                     break;
                 }
@@ -132,12 +131,7 @@ static void kprintf_internal(uint8_t color, int use_color, const char *format, v
                 case 'c': {
                     // Character
                     char c = (char)va_arg(args, int);
-                    if (use_color) {
-                        char temp[2] = {c, '\0'};
-                        screen_write_color(temp, color);
-                    } else {
-                        screen_putchar(c);
-                    }
+                    screen_putchar_internal_for_kprintf(c);
                     break;
                 }
 
@@ -147,48 +141,38 @@ static void kprintf_internal(uint8_t color, int use_color, const char *format, v
                     if (s == NULL) {
                         s = "(null)";
                     }
-                    if (use_color) {
-                        screen_write_color(s, color);
-                    } else {
-                        screen_write(s);
+                    for (int i = 0; s[i] != '\0'; i++) {
+                        screen_putchar_internal_for_kprintf(s[i]);
                     }
                     break;
                 }
 
                 case '%': {
                     // Literal %
-                    if (use_color) {
-                        screen_write_color("%", color);
-                    } else {
-                        screen_putchar('%');
-                    }
+                    screen_putchar_internal_for_kprintf('%');
                     break;
                 }
 
                 default: {
                     // Unknown format specifier - print as-is
-                    if (use_color) {
-                        char temp[3] = {'%', *format, '\0'};
-                        screen_write_color(temp, color);
-                    } else {
-                        screen_putchar('%');
-                        screen_putchar(*format);
-                    }
+                    screen_putchar_internal_for_kprintf('%');
+                    screen_putchar_internal_for_kprintf(*format);
                     break;
                 }
             }
             format++;
         } else {
             // Regular character
-            if (use_color) {
-                char temp[2] = {*format, '\0'};
-                screen_write_color(temp, color);
-            } else {
-                screen_putchar(*format);
-            }
+            screen_putchar_internal_for_kprintf(*format);
             format++;
         }
     }
+
+    // Restore color and update cursor once at the end
+    if (use_color) {
+        screen_set_color(old_color);
+    }
+    screen_update_cursor();
 }
 
 /**

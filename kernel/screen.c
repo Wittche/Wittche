@@ -141,6 +141,13 @@ static void screen_putchar_internal(char c) {
 }
 
 /**
+ * Expose screen_putchar_internal to kprintf (to avoid excessive cursor updates)
+ */
+void screen_putchar_internal_for_kprintf(char c) {
+    screen_putchar_internal(c);
+}
+
+/**
  * Put a single character on screen
  */
 void screen_putchar(char c) {
@@ -235,6 +242,13 @@ void screen_write_dec(uint32_t num) {
  */
 void screen_set_color(uint8_t color) {
     current_color = color;
+}
+
+/**
+ * Get the current text color
+ */
+uint8_t screen_get_color(void) {
+    return current_color;
 }
 
 /**
