@@ -17,18 +17,35 @@ start:
     call print_string
 
     ; Load kernel from disk
-    ; We'll load sectors 2-100 (kernel) to 0x1000:0x0000
+    ; BIOS can only read ~63 sectors at once, so we do multiple reads
+    ; CHS: Sectors numbered 1-63, Heads 0-1+, Cylinders 0+
+
+    ; Read 1: Cyl 0, Head 0, Sectors 2-63 (62 sectors) to 0x1000:0x0000
     mov ah, 0x02        ; BIOS read sector function
-    mov al, 100         ; Number of sectors to read (50KB)
+    mov al, 62          ; Read 62 sectors (from sector 2 to 63)
     mov ch, 0           ; Cylinder 0
     mov cl, 2           ; Start from sector 2 (sector 1 is boot sector)
     mov dh, 0           ; Head 0
     mov dl, 0x80        ; Hard drive (use 0x00 for floppy)
-    mov bx, 0x1000      ; ES:BX = 0x1000:0x0000
+    mov bx, 0x1000      ; ES:BX = 0x1000:0x0000 = 0x10000 linear
     mov es, bx
     xor bx, bx
     int 0x13            ; Call BIOS
+    jc disk_error       ; Jump if carry flag set (error)
 
+    ; Read 2: Cyl 0, Head 1, Sectors 1-63 (63 sectors) to 0x17C0:0x0000
+    ; Previous: 62 sectors * 512 bytes = 31744 = 0x7C00
+    ; Next address: 0x10000 + 0x7C00 = 0x17C00 = segment 0x17C0
+    mov ah, 0x02        ; BIOS read sector function
+    mov al, 63          ; Read 63 sectors
+    mov ch, 0           ; Cylinder 0
+    mov cl, 1           ; Start from sector 1
+    mov dh, 1           ; Head 1 (next track)
+    mov dl, 0x80        ; Hard drive
+    mov bx, 0x17C0      ; ES = 0x17C0
+    mov es, bx
+    xor bx, bx          ; BX = 0x0000
+    int 0x13            ; Call BIOS
     jc disk_error       ; Jump if carry flag set (error)
 
     ; Print success message

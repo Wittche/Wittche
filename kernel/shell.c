@@ -10,6 +10,7 @@
 #include "../include/paging.h"
 #include "../include/process.h"
 #include "../include/ramdisk.h"
+#include "../include/fs.h"
 
 // External test processes from kernel.c
 extern void test_process_a(void);
@@ -54,6 +55,13 @@ static const char *available_commands[] = {
     "ramdisk",
     "rdformat",
     "rdinfo",
+    "fsformat",
+    "ls",
+    "cat",
+    "touch",
+    "rm",
+    "mkdir",
+    "write",
     NULL  // Sentinel
 };
 
@@ -63,7 +71,7 @@ static const char *available_commands[] = {
 void shell_display_banner(void) {
     screen_write_color("\n", DEFAULT_COLOR);
     screen_write_color("===========================================\n", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
-    screen_write_color(" Wittche Operating System v0.9\n", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
+    screen_write_color(" Wittche Operating System v0.9.0\n", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
     screen_write_color("===========================================\n", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
     screen_write("\n");
     screen_write("Welcome to Wittche OS!\n");
@@ -133,6 +141,20 @@ static void cmd_help(void) {
     screen_write("  - Format (clear) RAM disk\n");
     screen_write_color("  rdinfo", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
     screen_write("    - Display RAM disk information\n");
+    screen_write_color("  fsformat", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
+    screen_write("  - Format file system\n");
+    screen_write_color("  ls", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
+    screen_write("        - List files in directory\n");
+    screen_write_color("  touch", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
+    screen_write("     - Create empty file\n");
+    screen_write_color("  cat", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
+    screen_write("       - Display file contents\n");
+    screen_write_color("  rm", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
+    screen_write("        - Delete file\n");
+    screen_write_color("  mkdir", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
+    screen_write("     - Create directory\n");
+    screen_write_color("  write", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
+    screen_write("     - Write text to file\n");
     screen_write("\n");
 }
 
@@ -148,8 +170,8 @@ static void cmd_clear(void) {
  */
 static void cmd_about(void) {
     screen_write("\n");
-    screen_write_color("Wittche Operating System v0.7\n", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
-    screen_write_color("===============================\n", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
+    screen_write_color("Wittche Operating System v0.9.0\n", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
+    screen_write_color("=================================\n", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
     screen_write("\n");
     screen_write("A simple x86 operating system for educational purposes.\n\n");
 
@@ -160,8 +182,11 @@ static void cmd_about(void) {
     screen_write("  - Kernel heap (kmalloc/kfree) with 4MB size\n");
     screen_write("  - Paging (virtual memory) with identity mapping\n");
     screen_write("  - Process management with PCB and multitasking\n");
-    screen_write("  - Preemptive round-robin scheduler\n");
+    screen_write("  - Preemptive priority-based scheduler\n");
     screen_write("  - Context switching with full state save/restore\n");
+    screen_write("  - RAM Disk (1MB virtual disk)\n");
+    screen_write("  - WitFS file system (inode-based)\n");
+    screen_write("  - File operations (create, read, write, delete)\n");
     screen_write("  - Programmable Interval Timer (PIT)\n");
     screen_write("  - PS/2 keyboard driver with arrow key support\n");
     screen_write("  - VGA text mode with hardware cursor\n");
@@ -292,11 +317,11 @@ static void cmd_ver(void) {
     kprintf_color(MAKE_COLOR(COLOR_CYAN, COLOR_BLACK), "==============================\n");
     kprintf("\n");
     kprintf("  Version:     ");
-    kprintf_color(MAKE_COLOR(COLOR_CYAN, COLOR_BLACK), "0.7.0\n");
+    kprintf_color(MAKE_COLOR(COLOR_CYAN, COLOR_BLACK), "0.9.0\n");
     kprintf("  Codename:    ");
-    kprintf_color(MAKE_COLOR(COLOR_CYAN, COLOR_BLACK), "Process Manager\n");
+    kprintf_color(MAKE_COLOR(COLOR_CYAN, COLOR_BLACK), "File System\n");
     kprintf("  Build Date:  ");
-    kprintf_color(MAKE_COLOR(COLOR_CYAN, COLOR_BLACK), "2024-11\n");
+    kprintf_color(MAKE_COLOR(COLOR_CYAN, COLOR_BLACK), "2025-11\n");
     kprintf("  Arch:        ");
     kprintf_color(MAKE_COLOR(COLOR_CYAN, COLOR_BLACK), "x86 (32-bit)\n");
     kprintf("  License:     ");
@@ -904,99 +929,84 @@ static void cmd_usermodetest(void) {
  * rdinfo command - display RAM disk information
  */
 static void cmd_rdinfo(void) {
-    // Test if screen_write_dec works
-    screen_write_dec(9999);
-    screen_write_dec(8888);
-    screen_write_dec(7777);
+    screen_write("\n");
+    screen_write("RAM Disk Information\n");
+    screen_write("====================\n");
+    screen_write("\n");
 
-    // Test if screen_putchar works
-    screen_putchar('A');
-    screen_putchar('B');
-    screen_putchar('C');
-    screen_putchar('\n');
-
-    // Test if screen_write works
-    screen_write("TEST: If you see this, screen_write works!\n");
-
-    // Don't call ANY ramdisk functions yet
-    return;
-
-    kprintf("RAM Disk Information\n");
-    kprintf("====================\n");
-    kprintf("\n");
-
-    // Test if kprintf works BEFORE calling ramdisk functions
-    kprintf("DEBUG: Before ramdisk_is_initialized\n");
-
-    int is_init = ramdisk_is_initialized();
-
-    // Test if kprintf works AFTER calling ramdisk functions
-    kprintf("DEBUG: After ramdisk_is_initialized, result = %d\n", is_init);
-
-    if (!is_init) {
-        kprintf("Error: RAM Disk is not initialized!\n");
-        kprintf("\n");
+    if (!ramdisk_is_initialized()) {
+        screen_write("Error: RAM Disk is not initialized!\n");
+        screen_write("\n");
         return;
     }
 
-    kprintf("DEBUG: Before ramdisk_get_info\n");
     ramdisk_t *rd = ramdisk_get_info();
-    kprintf("DEBUG: After ramdisk_get_info\n");
 
-    kprintf("Status:\n");
-    kprintf("  Initialized:     YES\n");
-    kprintf("  Base Address:    0x%X\n", (uint32_t)rd->data);
-    kprintf("\n");
+    screen_write("Status:\n");
+    screen_write("  Initialized:     YES\n");
+    screen_write("  Base Address:    0x");
+    screen_write_hex((uint32_t)rd->data);
+    screen_write("\n\n");
 
-    kprintf("Configuration:\n");
-    kprintf("  Total Size:      %d bytes (%d KB / %d MB)\n",
-            rd->size, rd->size / 1024, rd->size / (1024 * 1024));
-    kprintf("  Block Size:      %d bytes\n", rd->block_size);
-    kprintf("  Block Count:     %d blocks\n", rd->block_count);
-    kprintf("\n");
+    screen_write("Configuration:\n");
+    screen_write("  Total Size:      ");
+    screen_write_dec(rd->size);
+    screen_write(" bytes (");
+    screen_write_dec(rd->size / 1024);
+    screen_write(" KB / ");
+    screen_write_dec(rd->size / (1024 * 1024));
+    screen_write(" MB)\n");
 
-    kprintf("Technical Details:\n");
-    kprintf("  Type:            Virtual disk in RAM\n");
-    kprintf("  Speed:           Memory speed (very fast)\n");
-    kprintf("  Volatile:        Yes (data lost on reboot)\n");
-    kprintf("  Purpose:         Foundation for file system\n");
-    kprintf("\n");
+    screen_write("  Block Size:      ");
+    screen_write_dec(rd->block_size);
+    screen_write(" bytes\n");
+
+    screen_write("  Block Count:     ");
+    screen_write_dec(rd->block_count);
+    screen_write(" blocks\n\n");
+
+    screen_write("Technical Details:\n");
+    screen_write("  Type:            Virtual disk in RAM\n");
+    screen_write("  Speed:           Memory speed (very fast)\n");
+    screen_write("  Volatile:        Yes (data lost on reboot)\n");
+    screen_write("  Purpose:         Foundation for file system\n");
+    screen_write("\n");
 }
 
 /**
  * rdformat command - format RAM disk
  */
 static void cmd_rdformat(void) {
-    kprintf("\n");
-    kprintf("RAM Disk Format\n");
-    kprintf("===============\n");
-    kprintf("\n");
+    screen_write("\n");
+    screen_write("RAM Disk Format\n");
+    screen_write("===============\n");
+    screen_write("\n");
 
     if (!ramdisk_is_initialized()) {
-        kprintf("Error: RAM Disk is not initialized!\n");
-        kprintf("\n");
+        screen_write("Error: RAM Disk is not initialized!\n");
+        screen_write("\n");
         return;
     }
 
-    kprintf("Formatting RAM disk (clearing all data)...\n");
+    screen_write("Formatting RAM disk (clearing all data)...\n");
     ramdisk_format();
-    kprintf("RAM Disk formatted successfully!\n");
-    kprintf("All blocks cleared to zero.\n");
-    kprintf("\n");
+    screen_write("RAM Disk formatted successfully!\n");
+    screen_write("All blocks cleared to zero.\n");
+    screen_write("\n");
 }
 
 /**
  * ramdisk command - test RAM disk read/write
  */
 static void cmd_ramdisk(void) {
-    kprintf("\n");
-    kprintf("RAM Disk Test\n");
-    kprintf("=============\n");
-    kprintf("\n");
+    screen_write("\n");
+    screen_write("RAM Disk Test\n");
+    screen_write("=============\n");
+    screen_write("\n");
 
     if (!ramdisk_is_initialized()) {
-        kprintf("Error: RAM Disk is not initialized!\n");
-        kprintf("\n");
+        screen_write("Error: RAM Disk is not initialized!\n");
+        screen_write("\n");
         return;
     }
 
@@ -1008,49 +1018,49 @@ static void cmd_ramdisk(void) {
     uint8_t *read_buffer = (uint8_t *)kmalloc(512);
 
     if (!write_buffer || !read_buffer) {
-        kprintf_color(MAKE_COLOR(COLOR_RED, COLOR_BLACK), "Error: Failed to allocate test buffers!\n");
+        screen_write_color("Error: Failed to allocate test buffers!\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
         if (write_buffer) kfree(write_buffer);
         if (read_buffer) kfree(read_buffer);
-        kprintf("\n");
+        screen_write("\n");
         return;
     }
 
     // Test 1: Write test pattern to block 0
-    kprintf("Test 1: Write Pattern to Block 0\n");
-    kprintf("  Preparing test data...\n");
+    screen_write("Test 1: Write Pattern to Block 0\n");
+    screen_write("  Preparing test data...\n");
 
     // Fill buffer with pattern
     for (int i = 0; i < 512; i++) {
         write_buffer[i] = (uint8_t)(i % 256);
     }
 
-    kprintf("  Writing block 0...\n");
+    screen_write("  Writing block 0...\n");
     if (ramdisk_write_block(0, write_buffer) == 0) {
-        kprintf("  SUCCESS: Block written\n");
+        screen_write("  SUCCESS: Block written\n");
     } else {
-        kprintf("  FAILED: Write error\n");
-        kprintf("\n");
+        screen_write("  FAILED: Write error\n");
+        screen_write("\n");
         kfree(write_buffer);
         kfree(read_buffer);
         return;
     }
-    kprintf("\n");
+    screen_write("\n");
 
     // Test 2: Read back and verify
-    kprintf("Test 2: Read and Verify Block 0\n");
-    kprintf("  Reading block 0...\n");
+    screen_write("Test 2: Read and Verify Block 0\n");
+    screen_write("  Reading block 0...\n");
 
     if (ramdisk_read_block(0, read_buffer) == 0) {
-        kprintf("  SUCCESS: Block read\n");
+        screen_write("  SUCCESS: Block read\n");
     } else {
-        kprintf("  FAILED: Read error\n");
-        kprintf("\n");
+        screen_write("  FAILED: Read error\n");
+        screen_write("\n");
         kfree(write_buffer);
         kfree(read_buffer);
         return;
     }
 
-    kprintf("  Verifying data...\n");
+    screen_write("  Verifying data...\n");
     int errors = 0;
     for (int i = 0; i < 512; i++) {
         if (read_buffer[i] != write_buffer[i]) {
@@ -1059,46 +1069,52 @@ static void cmd_ramdisk(void) {
     }
 
     if (errors == 0) {
-        kprintf("  SUCCESS: Data verified (0 errors)\n");
+        screen_write("  SUCCESS: Data verified (0 errors)\n");
     } else {
-        kprintf("  FAILED: %d byte mismatches\n", errors);
+        screen_write("  FAILED: ");
+        screen_write_dec(errors);
+        screen_write(" byte mismatches\n");
     }
-    kprintf("\n");
+    screen_write("\n");
 
     // Test 3: Write ASCII text to block 1
-    kprintf("Test 3: Write ASCII Text to Block 1\n");
+    screen_write("Test 3: Write ASCII Text to Block 1\n");
     memset(write_buffer, 0, 512);
     const char *test_msg = "Hello from Wittche OS RAM Disk! This is a test message.";
     strcpy((char *)write_buffer, test_msg);
 
-    kprintf("  Writing: '%s'\n", test_msg);
+    screen_write("  Writing: '");
+    screen_write(test_msg);
+    screen_write("'\n");
     ramdisk_write_block(1, write_buffer);
-    kprintf("  SUCCESS: Text written to block 1\n");
-    kprintf("\n");
+    screen_write("  SUCCESS: Text written to block 1\n");
+    screen_write("\n");
 
     // Test 4: Read back text
-    kprintf("Test 4: Read Text from Block 1\n");
+    screen_write("Test 4: Read Text from Block 1\n");
     memset(read_buffer, 0, 512);
     ramdisk_read_block(1, read_buffer);
-    kprintf("  Read back: '%s'\n", (char *)read_buffer);
+    screen_write("  Read back: '");
+    screen_write((char *)read_buffer);
+    screen_write("'\n");
 
     if (strcmp((char *)read_buffer, test_msg) == 0) {
-        kprintf("  SUCCESS: Text matches perfectly\n");
+        screen_write("  SUCCESS: Text matches perfectly\n");
     } else {
-        kprintf("  FAILED: Text mismatch\n");
+        screen_write("  FAILED: Text mismatch\n");
     }
-    kprintf("\n");
+    screen_write("\n");
 
     // Test 5: Multiple block operations
-    kprintf("Test 5: Multiple Block Operations\n");
-    kprintf("  Writing to 10 different blocks...\n");
+    screen_write("Test 5: Multiple Block Operations\n");
+    screen_write("  Writing to 10 different blocks...\n");
 
     for (int block = 10; block < 20; block++) {
         memset(write_buffer, 'A' + (block - 10), 512);
         ramdisk_write_block(block, write_buffer);
     }
 
-    kprintf("  Reading back and verifying...\n");
+    screen_write("  Reading back and verifying...\n");
     int block_errors = 0;
     for (int block = 10; block < 20; block++) {
         ramdisk_read_block(block, read_buffer);
@@ -1111,21 +1127,407 @@ static void cmd_ramdisk(void) {
     }
 
     if (block_errors == 0) {
-        kprintf("  SUCCESS: All 10 blocks verified\n");
+        screen_write("  SUCCESS: All 10 blocks verified\n");
     } else {
-        kprintf("  FAILED: %d blocks had errors\n", block_errors);
+        screen_write("  FAILED: ");
+        screen_write_dec(block_errors);
+        screen_write(" blocks had errors\n");
     }
-    kprintf("\n");
+    screen_write("\n");
 
     // Summary
-    kprintf("RAM Disk Test Complete!\n");
-    kprintf("Total blocks available: %d\n", rd->block_count);
-    kprintf("Blocks tested: 12 (blocks 0, 1, and 10-19)\n");
-    kprintf("\n");
+    screen_write("RAM Disk Test Complete!\n");
+    screen_write("Total blocks available: ");
+    screen_write_dec(rd->block_count);
+    screen_write("\n");
+    screen_write("Blocks tested: 12 (blocks 0, 1, and 10-19)\n");
+    screen_write("\n");
 
     // Clean up heap allocations
     kfree(write_buffer);
     kfree(read_buffer);
+}
+
+/**
+ * fsformat command - format file system
+ */
+static void cmd_fsformat(void) {
+    screen_write("\n");
+    screen_write_color("File System Format\n", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
+    screen_write_color("==================\n", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
+    screen_write("\n");
+
+    screen_write("Formatting file system...\n");
+    fs_format();
+    fs_init();
+
+    screen_write_color("File system formatted successfully!\n", MAKE_COLOR(COLOR_GREEN, COLOR_BLACK));
+    screen_write("Empty root directory created.\n");
+    screen_write("\n");
+}
+
+/**
+ * ls command - list files in directory
+ */
+static void cmd_ls(void) {
+    screen_write("\n");
+
+    if (!fs_is_initialized()) {
+        screen_write_color("Error: File system not initialized!\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
+        screen_write("Run 'fsformat' to create a new file system.\n\n");
+        return;
+    }
+
+    fs_dirent_t *entries = (fs_dirent_t *)kmalloc(sizeof(fs_dirent_t) * 64);
+    if (!entries) {
+        screen_write_color("Error: Out of memory\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
+        screen_write("\n");
+        return;
+    }
+
+    int count = fs_readdir("/", entries, 64);
+
+    if (count < 0) {
+        screen_write_color("Error: Failed to read directory\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
+        screen_write("\n");
+        kfree(entries);
+        return;
+    }
+
+    if (count == 0) {
+        screen_write_color("Directory is empty\n", MAKE_COLOR(COLOR_DARK_GREY, COLOR_BLACK));
+        screen_write("\n");
+        kfree(entries);
+        return;
+    }
+
+    screen_write_color("Files in /:\n", MAKE_COLOR(COLOR_YELLOW, COLOR_BLACK));
+    screen_write_color("===========\n", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
+
+    for (int i = 0; i < count; i++) {
+        // Get file info
+        fs_inode_t stat;
+        if (fs_stat(entries[i].name, &stat) == 0) {
+            // Color code by type
+            if ((stat.mode & 0xFF) == FS_TYPE_DIR) {
+                screen_write_color("  [DIR]  ", MAKE_COLOR(COLOR_LIGHT_BLUE, COLOR_BLACK));
+            } else {
+                screen_write_color("  [FILE] ", MAKE_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
+            }
+
+            screen_write(entries[i].name);
+
+            // Show file size
+            if ((stat.mode & 0xFF) == FS_TYPE_FILE) {
+                screen_write(" (");
+                screen_write_dec(stat.size);
+                screen_write(" bytes)");
+            }
+
+            screen_write("\n");
+        }
+    }
+
+    screen_write("\n");
+    screen_write("Total: ");
+    screen_write_dec(count);
+    screen_write(" item");
+    if (count != 1) screen_write("s");
+    screen_write("\n\n");
+
+    kfree(entries);
+}
+
+/**
+ * touch command - create empty file
+ * Usage: touch <filename>
+ */
+static void cmd_touch(const char *args) {
+    screen_write("\n");
+
+    if (!fs_is_initialized()) {
+        screen_write_color("Error: File system not initialized!\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
+        screen_write("Run 'fsformat' to create a new file system.\n\n");
+        return;
+    }
+
+    if (!args || strlen(args) == 0) {
+        screen_write_color("Usage: touch <filename>\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
+        screen_write("Example: touch hello.txt\n\n");
+        return;
+    }
+
+    // Check if file already exists
+    if (fs_exists(args)) {
+        screen_write_color("Error: File '", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
+        screen_write(args);
+        screen_write("' already exists\n\n");
+        return;
+    }
+
+    // Create the file
+    if (fs_create(args, FS_TYPE_FILE) < 0) {
+        screen_write_color("Error: Failed to create file '", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
+        screen_write(args);
+        screen_write("'\n\n");
+        return;
+    }
+
+    screen_write_color("Created file: ", MAKE_COLOR(COLOR_GREEN, COLOR_BLACK));
+    screen_write(args);
+    screen_write("\n\n");
+}
+
+/**
+ * cat command - display file contents
+ * Usage: cat <filename>
+ */
+static void cmd_cat(const char *args) {
+    screen_write("\n");
+
+    if (!fs_is_initialized()) {
+        screen_write_color("Error: File system not initialized!\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
+        screen_write("Run 'fsformat' to create a new file system.\n\n");
+        return;
+    }
+
+    if (!args || strlen(args) == 0) {
+        screen_write_color("Usage: cat <filename>\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
+        screen_write("Example: cat hello.txt\n\n");
+        return;
+    }
+
+    // Check if file exists
+    if (!fs_exists(args)) {
+        screen_write_color("Error: File '", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
+        screen_write(args);
+        screen_write("' not found\n\n");
+        return;
+    }
+
+    // Get file info
+    fs_inode_t stat;
+    if (fs_stat(args, &stat) < 0) {
+        screen_write_color("Error: Failed to get file info\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
+        screen_write("\n");
+        return;
+    }
+
+    // Check if it's a file (not directory)
+    if ((stat.mode & 0xFF) != FS_TYPE_FILE) {
+        screen_write_color("Error: '", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
+        screen_write(args);
+        screen_write("' is a directory\n\n");
+        return;
+    }
+
+    // Open file
+    int fd = fs_open(args, FS_OPEN_READ);
+    if (fd < 0) {
+        screen_write_color("Error: Failed to open file\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
+        screen_write("\n");
+        return;
+    }
+
+    // If file is empty
+    if (stat.size == 0) {
+        screen_write_color("(empty file)\n", MAKE_COLOR(COLOR_DARK_GREY, COLOR_BLACK));
+        screen_write("\n");
+        fs_close(fd);
+        return;
+    }
+
+    // Allocate buffer for file contents
+    char *buffer = (char *)kmalloc(stat.size + 1);
+    if (!buffer) {
+        screen_write_color("Error: Out of memory\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
+        screen_write("\n");
+        fs_close(fd);
+        return;
+    }
+
+    // Read file
+    int bytes_read = fs_read(fd, buffer, stat.size);
+    if (bytes_read < 0) {
+        screen_write_color("Error: Failed to read file\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
+        screen_write("\n");
+        kfree(buffer);
+        fs_close(fd);
+        return;
+    }
+
+    buffer[bytes_read] = '\0';
+
+    // Display contents
+    screen_write(buffer);
+    screen_write("\n\n");
+
+    kfree(buffer);
+    fs_close(fd);
+}
+
+/**
+ * rm command - delete file
+ * Usage: rm <filename>
+ */
+static void cmd_rm(const char *args) {
+    screen_write("\n");
+
+    if (!fs_is_initialized()) {
+        screen_write_color("Error: File system not initialized!\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
+        screen_write("Run 'fsformat' to create a new file system.\n\n");
+        return;
+    }
+
+    if (!args || strlen(args) == 0) {
+        screen_write_color("Usage: rm <filename>\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
+        screen_write("Example: rm hello.txt\n\n");
+        return;
+    }
+
+    // Check if file exists
+    if (!fs_exists(args)) {
+        screen_write_color("Error: File '", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
+        screen_write(args);
+        screen_write("' not found\n\n");
+        return;
+    }
+
+    // Delete the file
+    if (fs_unlink(args) < 0) {
+        screen_write_color("Error: Failed to delete file '", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
+        screen_write(args);
+        screen_write("'\n\n");
+        return;
+    }
+
+    screen_write_color("Deleted file: ", MAKE_COLOR(COLOR_GREEN, COLOR_BLACK));
+    screen_write(args);
+    screen_write("\n\n");
+}
+
+/**
+ * mkdir command - create directory
+ * Usage: mkdir <dirname>
+ */
+static void cmd_mkdir(const char *args) {
+    screen_write("\n");
+
+    if (!fs_is_initialized()) {
+        screen_write_color("Error: File system not initialized!\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
+        screen_write("Run 'fsformat' to create a new file system.\n\n");
+        return;
+    }
+
+    if (!args || strlen(args) == 0) {
+        screen_write_color("Usage: mkdir <dirname>\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
+        screen_write("Example: mkdir docs\n\n");
+        return;
+    }
+
+    // Check if already exists
+    if (fs_exists(args)) {
+        screen_write_color("Error: '", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
+        screen_write(args);
+        screen_write("' already exists\n\n");
+        return;
+    }
+
+    // Create directory
+    if (fs_mkdir(args) < 0) {
+        screen_write_color("Error: Failed to create directory '", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
+        screen_write(args);
+        screen_write("'\n\n");
+        return;
+    }
+
+    screen_write_color("Created directory: ", MAKE_COLOR(COLOR_GREEN, COLOR_BLACK));
+    screen_write(args);
+    screen_write("\n\n");
+}
+
+/**
+ * write command - write text to a file
+ * Usage: write <filename> <text>
+ */
+static void cmd_write(const char *args) {
+    screen_write("\n");
+
+    if (!fs_is_initialized()) {
+        screen_write_color("Error: File system not initialized!\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
+        screen_write("Run 'fsformat' to create a new file system.\n\n");
+        return;
+    }
+
+    if (!args || strlen(args) == 0) {
+        screen_write_color("Usage: write <filename> <text>\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
+        screen_write("Example: write hello.txt Hello, World!\n\n");
+        return;
+    }
+
+    // Parse filename and text
+    char args_copy[256];
+    strncpy(args_copy, args, 255);
+    args_copy[255] = '\0';
+
+    // Find first space to separate filename from text
+    char *space = strchr(args_copy, ' ');
+    if (!space) {
+        screen_write_color("Error: Missing text content\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
+        screen_write("Usage: write <filename> <text>\n\n");
+        return;
+    }
+
+    *space = '\0';  // Split string
+    char *filename = args_copy;
+    char *text = space + 1;
+
+    // Check if file exists
+    int file_exists = fs_exists(filename);
+    int fd;
+
+    if (file_exists) {
+        // File exists - open for writing (will overwrite)
+        fd = fs_open(filename, FS_OPEN_WRITE);
+    } else {
+        // File doesn't exist - create it
+        if (fs_create(filename, FS_TYPE_FILE) < 0) {
+            screen_write_color("Error: Failed to create file '", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
+            screen_write(filename);
+            screen_write("'\n\n");
+            return;
+        }
+        fd = fs_open(filename, FS_OPEN_WRITE);
+    }
+
+    if (fd < 0) {
+        screen_write_color("Error: Failed to open file\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
+        screen_write("\n");
+        return;
+    }
+
+    // Write text to file
+    int text_len = strlen(text);
+    int bytes_written = fs_write(fd, text, text_len);
+
+    if (bytes_written < 0) {
+        screen_write_color("Error: Failed to write to file\n", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
+        screen_write("\n");
+        fs_close(fd);
+        return;
+    }
+
+    fs_close(fd);
+
+    if (file_exists) {
+        screen_write_color("Updated file: ", MAKE_COLOR(COLOR_GREEN, COLOR_BLACK));
+    } else {
+        screen_write_color("Created file: ", MAKE_COLOR(COLOR_GREEN, COLOR_BLACK));
+    }
+    screen_write(filename);
+    screen_write(" (");
+    screen_write_dec(bytes_written);
+    screen_write(" bytes written)\n\n");
 }
 
 /**
@@ -1235,6 +1637,20 @@ void shell_process_command(char *command) {
         cmd_rdformat();
     } else if (strcmp(cmd, "rdinfo") == 0) {
         cmd_rdinfo();
+    } else if (strcmp(cmd, "fsformat") == 0) {
+        cmd_fsformat();
+    } else if (strcmp(cmd, "ls") == 0) {
+        cmd_ls();
+    } else if (strcmp(cmd, "touch") == 0) {
+        cmd_touch(full_args);
+    } else if (strcmp(cmd, "cat") == 0) {
+        cmd_cat(full_args);
+    } else if (strcmp(cmd, "rm") == 0) {
+        cmd_rm(full_args);
+    } else if (strcmp(cmd, "mkdir") == 0) {
+        cmd_mkdir(full_args);
+    } else if (strcmp(cmd, "write") == 0) {
+        cmd_write(full_args);
     } else {
         screen_write("\n");
         screen_write_color("Error: ", MAKE_COLOR(COLOR_RED, COLOR_BLACK));

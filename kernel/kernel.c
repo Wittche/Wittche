@@ -20,6 +20,7 @@
 #include "../include/string.h"
 #include "../include/userlib.h"
 #include "../include/ramdisk.h"
+#include "../include/fs.h"
 
 /**
  * Test process A - prints message periodically
@@ -314,6 +315,12 @@ void kernel_main(void) {
     heap_init();    // Kernel heap
     paging_init();  // Virtual memory (enables paging)
     ramdisk_init(); // RAM disk (virtual disk in memory) - after paging!
+
+    // Initialize file system (format on first boot, then mount)
+    if (!fs_is_initialized()) {
+        fs_format();  // Create new file system
+    }
+    fs_init();  // Mount file system
 
     // Initialize process management (multitasking)
     process_init();
