@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-0.8.0-blue.svg)
+![Version](https://img.shields.io/badge/version-0.8.1-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Platform](https://img.shields.io/badge/platform-x86-orange.svg)
 ![Language](https://img.shields.io/badge/language-C%20%7C%20Assembly-yellow.svg)
@@ -63,13 +63,20 @@ This project was developed by artificial intelligence without knowing any code.
 - ✅ **64 Concurrent Processes**: Maximum process support
 - ✅ **Complete Lifecycle Control**: Create, monitor, modify priority, sleep, terminate
 
+### 💾 Storage (v0.8.1)
+- ✅ **RAM Disk**: 1MB virtual disk in memory (2048 blocks × 512 bytes)
+- ✅ **Block I/O**: Read/write operations on 512-byte blocks
+- ✅ **RAM Disk Commands**: rdinfo, rdformat, ramdisk
+- ✅ **Format Support**: Clear/initialize disk
+- ✅ **Foundation for File System**: Ready for FAT12/custom FS implementation
+
 ### 💻 Shell
 - ✅ **Interactive Shell**: Full-featured command-line interface
 - ✅ **Command Parser**: Argument parsing and tokenization
 - ✅ **Command History**: Last 10 commands tracked
 - ✅ **Tab Completion**: Auto-complete commands with Tab key
 - ✅ **Arrow Key Support**: Navigate and edit command line
-- ✅ **Built-in Commands**: help, clear/cls, about, ver, mem, meminfo, memtest, ps, testproc, sleeptest, nice, kill, echo, color, uptime, history, banner
+- ✅ **Built-in Commands**: help, clear/cls, about, ver, mem, meminfo, memtest, ps, testproc, sleeptest, nice, kill, echo, color, uptime, history, banner, rdinfo, rdformat, ramdisk
 - ✅ **Colorful Output**: Colored command output
 - ✅ **Memory Inspector**: View memory layout and statistics
 
@@ -128,10 +135,17 @@ You should see the Wittche OS boot screen and shell prompt!
 
 ## 📖 Documentation
 
+### Release Notes
+- **[Release Notes v0.8.1](docs/RELEASE_v0.8.1.md)** - RAM Disk & Bootloader Fix
 - **[Release Notes v0.8.0](.github/RELEASE_v0.8.0.md)** - Advanced Process Features release
 - **[Release Notes v0.7.0](.github/RELEASE_v0.7.0.md)** - Process Management release
 - **[Release Notes v0.6.0](.github/RELEASE_v0.6.0.md)** - Memory Management release
 - **[Release Notes v0.5.0](.github/RELEASE_v0.5.0.md)** - Enhanced UX release
+
+### Technical Documentation
+- **[Bootloader String Literal Fix](docs/BOOTLOADER_STRING_LITERAL_FIX.md)** - Detailed debugging case study
+
+### Guides
 - **[Contributing Guide](CONTRIBUTING.md)** - How to contribute to the project
 - **[Code of Conduct](CODE_OF_CONDUCT.md)** - Community guidelines
 - **[Roadmap](ROADMAP.md)** - Future plans and features
@@ -139,7 +153,24 @@ You should see the Wittche OS boot screen and shell prompt!
 
 ## 📋 Release Notes
 
-### Latest: v0.8.0 - "Advanced Process Features" (November 19, 2024)
+### Latest: v0.8.1 - "RAM Disk & Bootloader Fix" (November 20, 2024)
+💾 **RAM Disk Implementation + Critical Bootloader Fix!**
+
+**Key Features:**
+- RAM Disk: 1MB virtual disk in memory (2048 blocks × 512 bytes)
+- New commands: `rdinfo`, `rdformat`, `ramdisk`
+- Foundation for future file system implementation
+
+**Critical Bug Fix:**
+- **Fixed bootloader sector loading issue** - Kernel was only loading 50KB, causing string literals to not load
+- Implemented multi-read bootloader supporting 125 sectors (~64KB)
+- Proper CHS addressing with BIOS int 0x13 limitations
+
+**[Read Full Technical Analysis →](docs/BOOTLOADER_STRING_LITERAL_FIX.md)**
+
+### Previous Releases
+
+**v0.8.0 - "Advanced Process Features"** (November 19, 2024)
 🎯 **Priority Scheduling, Sleep/Wake, and Process Control!**
 
 **Key Features:**
@@ -150,8 +181,6 @@ You should see the Wittche OS boot screen and shell prompt!
 - Enhanced process management with full lifecycle control
 
 **[Read Full Release Notes →](.github/RELEASE_v0.8.0.md)**
-
-### Previous Releases
 
 **v0.7.0 - "Process Manager"** (November 2024)
 - Process Control Block (PCB) and multitasking
@@ -280,6 +309,7 @@ Wittche/
 │   ├── paging.c         # Virtual memory paging
 │   ├── process.c        # Process management
 │   ├── switch.asm       # Context switching
+│   ├── ramdisk.c        # RAM disk (virtual disk in memory)
 │   └── shell.c          # Interactive shell
 │
 ├── include/             # Header files
@@ -295,8 +325,13 @@ Wittche/
 │   ├── heap.h           # Heap allocator interface
 │   ├── paging.h         # Paging interface
 │   ├── process.h        # Process management interface
+│   ├── ramdisk.h        # RAM disk interface
 │   ├── ports.h          # I/O port operations
 │   └── types.h          # Type definitions
+│
+├── docs/                # Documentation
+│   ├── BOOTLOADER_STRING_LITERAL_FIX.md  # Bootloader debugging case study
+│   └── RELEASE_v0.8.1.md                  # v0.8.1 release notes
 │
 ├── .github/             # GitHub templates
 │   ├── ISSUE_TEMPLATE/  # Issue templates
@@ -318,10 +353,12 @@ Wittche/
 ### Boot Process
 1. **BIOS** loads boot sector (512 bytes) to 0x7C00
 2. **Bootloader** (boot.asm):
-   - Loads kernel from disk to 0x10000
+   - Loads kernel from disk in multiple reads (125 sectors ~64KB)
+   - Read 1: 62 sectors to 0x10000 (Cyl 0, Head 0, Sectors 2-63)
+   - Read 2: 63 sectors to 0x17C00 (Cyl 0, Head 1, Sectors 1-63)
    - Sets up GDT
    - Switches to protected mode
-   - Jumps to kernel
+   - Jumps to kernel at 0x10000
 
 3. **Kernel Entry** (kernel_entry.asm):
    - Sets up segment registers
@@ -417,11 +454,12 @@ Total processes: 4
 ## 📊 Statistics
 
 - **Language**: C (75%), Assembly (20%), Makefile (5%)
-- **Lines of Code**: ~6,000+
-- **Kernel Modules**: 15 modules (screen, idt, isr, keyboard, timer, string, kprintf, pmm, heap, paging, process, shell)
-- **Shell Commands**: 18 built-in commands
+- **Lines of Code**: ~6,500+
+- **Kernel Modules**: 16 modules (screen, idt, isr, keyboard, timer, string, kprintf, pmm, heap, paging, process, ramdisk, shell)
+- **Shell Commands**: 21 built-in commands
 - **Interrupts**: 48 handlers (32 ISR + 16 IRQ)
-- **Kernel Size**: ~40 KB
+- **Kernel Size**: ~50 KB (loaded: ~64 KB with bootloader multi-read)
+- **RAM Disk**: 1 MB (2048 blocks × 512 bytes)
 - **Max Processes**: 64 concurrent processes
 - **Priority Levels**: 256 (0-255)
 - **Sleep Precision**: ±1ms
