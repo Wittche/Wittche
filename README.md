@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-0.8.1-blue.svg)
+![Version](https://img.shields.io/badge/version-0.9.0-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Platform](https://img.shields.io/badge/platform-x86-orange.svg)
 ![Language](https://img.shields.io/badge/language-C%20%7C%20Assembly-yellow.svg)
@@ -68,7 +68,18 @@ This project was developed by artificial intelligence without knowing any code.
 - ✅ **Block I/O**: Read/write operations on 512-byte blocks
 - ✅ **RAM Disk Commands**: rdinfo, rdformat, ramdisk
 - ✅ **Format Support**: Clear/initialize disk
-- ✅ **Foundation for File System**: Ready for FAT12/custom FS implementation
+
+### 📁 File System (v0.9.0)
+- ✅ **WitFS (Wittche File System)**: Complete inode-based file system
+- ✅ **File Operations**: Create, read, write, delete files
+- ✅ **Directory Support**: Create and list directories
+- ✅ **Inode Table**: 512 inodes with metadata tracking
+- ✅ **Bitmap Allocation**: Efficient inode and data block management
+- ✅ **File Descriptors**: Up to 16 open files simultaneously
+- ✅ **Block Pointers**: 10 direct blocks per inode (max 5KB per file)
+- ✅ **File System Commands**: fsformat, ls, touch, cat, rm, mkdir, write
+- ✅ **Persistent Storage**: File data stored on RAM disk (volatile)
+- ✅ **Magic Number**: 0x57495443 ('WITC')
 
 ### 💻 Shell
 - ✅ **Interactive Shell**: Full-featured command-line interface
@@ -76,7 +87,7 @@ This project was developed by artificial intelligence without knowing any code.
 - ✅ **Command History**: Last 10 commands tracked
 - ✅ **Tab Completion**: Auto-complete commands with Tab key
 - ✅ **Arrow Key Support**: Navigate and edit command line
-- ✅ **Built-in Commands**: help, clear/cls, about, ver, mem, meminfo, memtest, ps, testproc, sleeptest, nice, kill, echo, color, uptime, history, banner, rdinfo, rdformat, ramdisk
+- ✅ **Built-in Commands**: help, clear/cls, about, ver, mem, meminfo, memtest, ps, testproc, sleeptest, nice, kill, echo, color, uptime, history, banner, rdinfo, rdformat, ramdisk, fsformat, ls, touch, cat, rm, mkdir, write
 - ✅ **Colorful Output**: Colored command output
 - ✅ **Memory Inspector**: View memory layout and statistics
 
@@ -136,11 +147,12 @@ You should see the Wittche OS boot screen and shell prompt!
 ## 📖 Documentation
 
 ### Release Notes
+- **[Release Notes v0.9.0](docs/RELEASE_v0.9.0.md)** - File System Implementation
 - **[Release Notes v0.8.1](docs/RELEASE_v0.8.1.md)** - RAM Disk & Bootloader Fix
-- **[Release Notes v0.8.0](.github/RELEASE_v0.8.0.md)** - Advanced Process Features release
-- **[Release Notes v0.7.0](.github/RELEASE_v0.7.0.md)** - Process Management release
-- **[Release Notes v0.6.0](.github/RELEASE_v0.6.0.md)** - Memory Management release
-- **[Release Notes v0.5.0](.github/RELEASE_v0.5.0.md)** - Enhanced UX release
+- **[Release Notes v0.8.0](.github/RELEASE_v0.8.0.md)** - Advanced Process Features
+- **[Release Notes v0.7.0](.github/RELEASE_v0.7.0.md)** - Process Management
+- **[Release Notes v0.6.0](.github/RELEASE_v0.6.0.md)** - Memory Management
+- **[Release Notes v0.5.0](.github/RELEASE_v0.5.0.md)** - Enhanced UX
 
 ### Technical Documentation
 - **[Bootloader String Literal Fix](docs/BOOTLOADER_STRING_LITERAL_FIX.md)** - Detailed debugging case study
@@ -153,22 +165,37 @@ You should see the Wittche OS boot screen and shell prompt!
 
 ## 📋 Release Notes
 
-### Latest: v0.8.1 - "RAM Disk & Bootloader Fix" (November 20, 2024)
-💾 **RAM Disk Implementation + Critical Bootloader Fix!**
+### Latest: v0.9.0 - "File System" (November 20, 2025)
+📁 **Complete File System Implementation (WitFS)!**
 
 **Key Features:**
-- RAM Disk: 1MB virtual disk in memory (2048 blocks × 512 bytes)
-- New commands: `rdinfo`, `rdformat`, `ramdisk`
-- Foundation for future file system implementation
+- WitFS (Wittche File System): Inode-based file system on RAM disk
+- File operations: Create, read, write, delete files
+- Directory support: Create and list directories
+- 512 inodes, 1981 data blocks (max 5KB per file)
+- New commands: `fsformat`, `ls`, `touch`, `cat`, `rm`, `mkdir`, `write`
+- Bitmap allocation for efficient space management
+- Up to 16 simultaneously open files
 
-**Critical Bug Fix:**
-- **Fixed bootloader sector loading issue** - Kernel was only loading 50KB, causing string literals to not load
-- Implemented multi-read bootloader supporting 125 sectors (~64KB)
-- Proper CHS addressing with BIOS int 0x13 limitations
+**Try it:**
+```bash
+wittche> fsformat          # Format file system
+wittche> write hello.txt Hello, World!
+wittche> ls                # List files
+wittche> cat hello.txt     # Display contents
+```
 
-**[Read Full Technical Analysis →](docs/BOOTLOADER_STRING_LITERAL_FIX.md)**
+**[Read Full Release Notes →](docs/RELEASE_v0.9.0.md)**
 
 ### Previous Releases
+
+**v0.8.1 - "RAM Disk & Bootloader Fix"** (November 20, 2024)
+💾 **RAM Disk Implementation + Critical Bootloader Fix!**
+
+- RAM Disk: 1MB virtual disk in memory (2048 blocks × 512 bytes)
+- New commands: `rdinfo`, `rdformat`, `ramdisk`
+- Fixed bootloader sector loading (50KB → 64KB)
+- [Read Full Technical Analysis →](docs/BOOTLOADER_STRING_LITERAL_FIX.md)
 
 **v0.8.0 - "Advanced Process Features"** (November 19, 2024)
 🎯 **Priority Scheduling, Sleep/Wake, and Process Control!**
