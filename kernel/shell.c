@@ -904,25 +904,48 @@ static void cmd_usermodetest(void) {
  * rdinfo command - display RAM disk information
  */
 static void cmd_rdinfo(void) {
-    // Test 1: Manual character output
-    screen_putchar('A');
-    screen_putchar('B');
-    screen_putchar('C');
-    screen_putchar('\n');
+    screen_write("\n");
+    screen_write("RAM Disk Information\n");
+    screen_write("====================\n");
+    screen_write("\n");
 
-    // Test 2: Local string variable
-    const char *msg = "Local string test\n";
-    screen_write(msg);
+    if (!ramdisk_is_initialized()) {
+        screen_write("Error: RAM Disk is not initialized!\n");
+        screen_write("\n");
+        return;
+    }
 
-    // Test 3: Direct string literal
-    screen_write("Direct literal test\n");
+    ramdisk_t *rd = ramdisk_get_info();
 
-    // Test 4: Numbers work?
-    screen_write_dec(1234);
-    screen_putchar('\n');
+    screen_write("Status:\n");
+    screen_write("  Initialized:     YES\n");
+    screen_write("  Base Address:    0x");
+    screen_write_hex((uint32_t)rd->data);
+    screen_write("\n\n");
 
-    // NO ramdisk functions called yet!
-    return;
+    screen_write("Configuration:\n");
+    screen_write("  Total Size:      ");
+    screen_write_dec(rd->size);
+    screen_write(" bytes (");
+    screen_write_dec(rd->size / 1024);
+    screen_write(" KB / ");
+    screen_write_dec(rd->size / (1024 * 1024));
+    screen_write(" MB)\n");
+
+    screen_write("  Block Size:      ");
+    screen_write_dec(rd->block_size);
+    screen_write(" bytes\n");
+
+    screen_write("  Block Count:     ");
+    screen_write_dec(rd->block_count);
+    screen_write(" blocks\n\n");
+
+    screen_write("Technical Details:\n");
+    screen_write("  Type:            Virtual disk in RAM\n");
+    screen_write("  Speed:           Memory speed (very fast)\n");
+    screen_write("  Volatile:        Yes (data lost on reboot)\n");
+    screen_write("  Purpose:         Foundation for file system\n");
+    screen_write("\n");
 }
 
 /**
