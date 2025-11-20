@@ -37,7 +37,8 @@ OBJS = $(BUILD_DIR)/kernel_entry.o \
        $(BUILD_DIR)/keyboard.o \
        $(BUILD_DIR)/timer.o \
        $(BUILD_DIR)/kprintf.o \
-       $(BUILD_DIR)/shell.o
+       $(BUILD_DIR)/shell.o \
+       $(BUILD_DIR)/ramdisk.o
 
 # Output files
 BOOTLOADER = $(BUILD_DIR)/boot.bin

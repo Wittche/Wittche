@@ -19,6 +19,7 @@
 #include "../include/shell.h"
 #include "../include/string.h"
 #include "../include/userlib.h"
+#include "../include/ramdisk.h"
 
 /**
  * Test process A - prints message periodically
@@ -311,6 +312,7 @@ void kernel_main(void) {
     // Initialize memory management
     pmm_init();     // Physical memory manager
     heap_init();    // Kernel heap
+    ramdisk_init(); // RAM disk (virtual disk in memory)
     paging_init();  // Virtual memory (enables paging)
 
     // Initialize process management (multitasking)
