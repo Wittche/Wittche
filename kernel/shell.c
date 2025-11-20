@@ -1198,7 +1198,16 @@ void shell_process_command(char *command) {
     } else if (strcmp(cmd, "rdformat") == 0) {
         cmd_rdformat();
     } else if (strcmp(cmd, "rdinfo") == 0) {
+        screen_write("\nDEBUG: rdinfo matched!\n");
         cmd_rdinfo();
+    } else if (strcmp(cmd, "testrd") == 0) {
+        // TEMPORARY TEST COMMAND
+        screen_write("\nTEST: testrd command works!\n");
+        screen_write("Calling ramdisk_is_initialized...\n");
+        int init = ramdisk_is_initialized();
+        screen_write("Result: ");
+        screen_write_dec(init);
+        screen_write("\n");
     } else {
         screen_write("\n");
         screen_write_color("Error: ", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
