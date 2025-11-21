@@ -4,6 +4,7 @@ build/
 *.o
 *.img
 *.iso
+a.out
 
 # Editor files
 *.swp

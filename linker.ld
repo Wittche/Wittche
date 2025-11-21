@@ -1,5 +1,5 @@
 /* Linker script for kernel */
-OUTPUT_FORMAT(binary)
+OUTPUT_FORMAT(elf32-i386)
 ENTRY(_start)
 
 SECTIONS
@@ -25,5 +25,14 @@ SECTIONS
     /* Uninitialized data */
     .bss : {
         *(.bss)
+    }
+
+    /* Discard unwanted sections (debug info, exception handling, etc.) */
+    /DISCARD/ : {
+        *(.eh_frame)
+        *(.eh_frame_hdr)
+        *(.note*)
+        *(.comment)
+        *(.debug*)
     }
 }
