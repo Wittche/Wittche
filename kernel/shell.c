@@ -86,11 +86,23 @@ void shell_prompt(void) {
     volatile unsigned short *vga = (volatile unsigned short *)0xB8000;
     vga[21] = 0x0F31; // '1' - shell_prompt entered
 
-    screen_write_color("wittche", MAKE_COLOR(COLOR_GREEN, COLOR_BLACK));
-    vga[22] = 0x0F32; // '2' - first screen_write_color done
+    // TEST: Write directly to VGA without using screen_write functions
+    // to isolate if problem is in string literals or screen functions
+    int row = 24; // Last line
+    int col = 0;
+    volatile unsigned short *prompt_pos = vga + (row * 80 + col);
+    prompt_pos[0] = 0x0A77; // 'w' in green
+    prompt_pos[1] = 0x0A69; // 'i' in green
+    prompt_pos[2] = 0x0A74; // 't' in green
+    prompt_pos[3] = 0x0A74; // 't' in green
+    prompt_pos[4] = 0x0A63; // 'c' in green
+    prompt_pos[5] = 0x0A68; // 'h' in green
+    prompt_pos[6] = 0x0A65; // 'e' in green
+    prompt_pos[7] = 0x0F3E; // '>' in light grey
+    prompt_pos[8] = 0x0F20; // ' ' in light grey
+    vga[22] = 0x0F32; // '2' - manual VGA write done
 
-    screen_write_color("> ", MAKE_COLOR(COLOR_LIGHT_GREY, COLOR_BLACK));
-    vga[23] = 0x0F33; // '3' - second screen_write_color done
+    vga[23] = 0x0F33; // '3' - shell_prompt done
 }
 
 /**
