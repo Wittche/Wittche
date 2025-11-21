@@ -1,207 +1,286 @@
-// System call implementation
-// Provides interface between user mode and kernel mode
+/**
+ * AuroraOS Kernel - System Call Implementation
+ *
+ * System call dispatcher and handlers
+ */
 
-#include "../include/syscall.h"
-#include "../include/process.h"
-#include "../include/screen.h"
-#include "../include/kprintf.h"
-#include "../include/idt.h"
+#include "syscall.h"
+#include "console.h"
+#include "process.h"
+#include "scheduler.h"
+#include "timer.h"
+#include "types.h"
 
-// System call table
-static syscall_handler_t syscall_table[SYSCALL_MAX] = {
-    sys_exit,    // 0
-    sys_write,   // 1
-    sys_read,    // 2
-    sys_getpid,  // 3
-    sys_sleep,   // 4
-    sys_yield,   // 5
-    sys_send,    // 6
-    sys_recv     // 7
+// MSR (Model Specific Register) addresses for SYSCALL/SYSRET
+#define MSR_STAR    0xC0000081  // Segment selectors
+#define MSR_LSTAR   0xC0000082  // SYSCALL entry point (64-bit)
+#define MSR_CSTAR   0xC0000083  // SYSCALL entry point (compatibility)
+#define MSR_SFMASK  0xC0000084  // RFLAGS mask
+
+// Syscall statistics
+static struct {
+    uint64_t total_syscalls;
+    uint64_t syscall_counts[SYSCALL_MAX + 1];
+    bool initialized;
+} syscall_state = {0};
+
+/**
+ * Write MSR
+ */
+static inline void wrmsr(uint32_t msr, uint64_t value) {
+    uint32_t low = value & 0xFFFFFFFF;
+    uint32_t high = value >> 32;
+    __asm__ __volatile__("wrmsr" :: "c"(msr), "a"(low), "d"(high));
+}
+
+/**
+ * Read MSR
+ */
+static inline uint64_t rdmsr(uint32_t msr) {
+    uint32_t low, high;
+    __asm__ __volatile__("rdmsr" : "=a"(low), "=d"(high) : "c"(msr));
+    return ((uint64_t)high << 32) | low;
+}
+
+/**
+ * sys_exit - Terminate calling process
+ */
+static int64_t sys_exit(uint64_t status, uint64_t arg2, uint64_t arg3,
+                        uint64_t arg4, uint64_t arg5, uint64_t arg6) {
+    (void)arg2; (void)arg3; (void)arg4; (void)arg5; (void)arg6;
+
+    console_print("[SYSCALL] exit(");
+    console_print_dec((int)status);
+    console_print(")\n");
+
+    process_exit((int)status);
+    return 0;  // Never reached
+}
+
+/**
+ * sys_write - Write to file descriptor
+ */
+static int64_t sys_write(uint64_t fd, uint64_t buf, uint64_t count,
+                         uint64_t arg4, uint64_t arg5, uint64_t arg6) {
+    (void)arg4; (void)arg5; (void)arg6;
+
+    // Only support stdout/stderr for now
+    if (fd != STDOUT_FILENO && fd != STDERR_FILENO) {
+        return -EBADF;
+    }
+
+    if (!buf) {
+        return -EINVAL;
+    }
+
+    // Write to console
+    const char *str = (const char*)buf;
+    for (uint64_t i = 0; i < count; i++) {
+        char ch[2] = {str[i], '\0'};
+        console_print(ch);
+    }
+
+    return (int64_t)count;
+}
+
+/**
+ * sys_read - Read from file descriptor
+ */
+static int64_t sys_read(uint64_t fd, uint64_t buf, uint64_t count,
+                        uint64_t arg4, uint64_t arg5, uint64_t arg6) {
+    (void)arg4; (void)arg5; (void)arg6;
+
+    // Only support stdin for now
+    if (fd != STDIN_FILENO) {
+        return -EBADF;
+    }
+
+    if (!buf) {
+        return -EINVAL;
+    }
+
+    // TODO: Implement proper keyboard input buffering
+    (void)count;  // Suppress unused warning
+    return -ENOSYS;  // Not implemented yet
+}
+
+/**
+ * sys_getpid - Get process ID
+ */
+static int64_t sys_getpid(uint64_t arg1, uint64_t arg2, uint64_t arg3,
+                          uint64_t arg4, uint64_t arg5, uint64_t arg6) {
+    (void)arg1; (void)arg2; (void)arg3; (void)arg4; (void)arg5; (void)arg6;
+
+    process_t *proc = process_get_current();
+    if (proc) {
+        return (int64_t)proc->pid;
+    }
+    return -1;
+}
+
+/**
+ * sys_yield - Yield CPU to another thread
+ */
+static int64_t sys_yield(uint64_t arg1, uint64_t arg2, uint64_t arg3,
+                         uint64_t arg4, uint64_t arg5, uint64_t arg6) {
+    (void)arg1; (void)arg2; (void)arg3; (void)arg4; (void)arg5; (void)arg6;
+
+    scheduler_yield();
+    return 0;
+}
+
+/**
+ * sys_sleep - Sleep for milliseconds
+ */
+static int64_t sys_sleep(uint64_t milliseconds, uint64_t arg2, uint64_t arg3,
+                         uint64_t arg4, uint64_t arg5, uint64_t arg6) {
+    (void)arg2; (void)arg3; (void)arg4; (void)arg5; (void)arg6;
+
+    timer_sleep((uint32_t)milliseconds);
+    return 0;
+}
+
+/**
+ * Unimplemented syscall handler
+ */
+static int64_t sys_unimplemented(uint64_t arg1, uint64_t arg2, uint64_t arg3,
+                                 uint64_t arg4, uint64_t arg5, uint64_t arg6) {
+    (void)arg1; (void)arg2; (void)arg3; (void)arg4; (void)arg5; (void)arg6;
+
+    console_print("[SYSCALL] ERROR: Unimplemented syscall\n");
+    return -ENOSYS;
+}
+
+/**
+ * System call table
+ */
+static syscall_handler_t syscall_table[SYSCALL_MAX + 1] = {
+    [SYSCALL_EXIT]   = sys_exit,
+    [SYSCALL_WRITE]  = sys_write,
+    [SYSCALL_READ]   = sys_read,
+    [SYSCALL_OPEN]   = sys_unimplemented,
+    [SYSCALL_CLOSE]  = sys_unimplemented,
+    [SYSCALL_GETPID] = sys_getpid,
+    [SYSCALL_FORK]   = sys_unimplemented,
+    [SYSCALL_EXEC]   = sys_unimplemented,
+    [SYSCALL_WAIT]   = sys_unimplemented,
+    [SYSCALL_KILL]   = sys_unimplemented,
+    [SYSCALL_SLEEP]  = sys_sleep,
+    [SYSCALL_YIELD]  = sys_yield,
+    [SYSCALL_MMAP]   = sys_unimplemented,
+    [SYSCALL_MUNMAP] = sys_unimplemented,
+    [SYSCALL_BRK]    = sys_unimplemented,
+    [SYSCALL_SBRK]   = sys_unimplemented,
 };
 
-// External interrupt handler from syscall.asm
-extern void syscall_interrupt_handler(void);
+/**
+ * System call dispatcher
+ * Called from assembly syscall entry point
+ */
+int64_t syscall_handler(uint64_t syscall_num, uint64_t arg1, uint64_t arg2,
+                        uint64_t arg3, uint64_t arg4, uint64_t arg5, uint64_t arg6) {
+    if (!syscall_state.initialized) {
+        return -ENOSYS;
+    }
+
+    // Update statistics
+    syscall_state.total_syscalls++;
+
+    // Validate syscall number
+    if (syscall_num > SYSCALL_MAX) {
+        console_print("[SYSCALL] ERROR: Invalid syscall number: ");
+        console_print_dec(syscall_num);
+        console_print("\n");
+        return -EINVAL;
+    }
+
+    syscall_state.syscall_counts[syscall_num]++;
+
+    // Get handler
+    syscall_handler_t handler = syscall_table[syscall_num];
+    if (!handler) {
+        return -ENOSYS;
+    }
+
+    // Call handler
+    int64_t result = handler(arg1, arg2, arg3, arg4, arg5, arg6);
+
+    return result;
+}
 
 /**
  * Initialize system call interface
  */
 void syscall_init(void) {
-    // Register INT 0x80 for system calls
-    // DPL=3 means usermode can call this interrupt
-    idt_set_gate(0x80, (uint32_t)syscall_interrupt_handler, 0x08, 0xEE);
+    console_print("[SYSCALL] Initializing system call interface...\n");
 
-    kprintf("[SYSCALL] System call interface initialized (INT 0x80)\n");
-    kprintf("[SYSCALL] Available syscalls: %d\n", SYSCALL_MAX);
+    // Reset statistics
+    syscall_state.total_syscalls = 0;
+    for (int i = 0; i <= SYSCALL_MAX; i++) {
+        syscall_state.syscall_counts[i] = 0;
+    }
+
+    // Set up MSRs for SYSCALL/SYSRET
+    // STAR: Segment selectors
+    // Bits 63:48 - Kernel CS (0x08) and SS (0x10) base
+    // Bits 47:32 - User CS (0x18) and SS (0x20) base
+    uint64_t star = ((uint64_t)0x08 << 32) | ((uint64_t)0x18 << 48);
+    wrmsr(MSR_STAR, star);
+
+    // LSTAR: Entry point for SYSCALL (64-bit mode)
+    wrmsr(MSR_LSTAR, (uint64_t)syscall_entry);
+
+    // SFMASK: RFLAGS mask (clear IF on syscall entry)
+    wrmsr(MSR_SFMASK, 0x200);  // Clear IF (interrupt flag)
+
+    // Enable SYSCALL/SYSRET in EFER
+    // This is typically already enabled, but let's make sure
+    // EFER MSR is 0xC0000080, bit 0 is SCE (System Call Extensions)
+    uint64_t efer = rdmsr(0xC0000080);
+    efer |= 0x01;  // Set SCE bit
+    wrmsr(0xC0000080, efer);
+
+    syscall_state.initialized = true;
+
+    console_print("[SYSCALL] System calls initialized\n");
+    console_print("[SYSCALL]   Entry point: ");
+    console_print_hex((uint64_t)syscall_entry);
+    console_print("\n[SYSCALL]   Syscalls available: ");
+    console_print_dec(SYSCALL_MAX + 1);
+    console_print("\n");
 }
 
 /**
- * System call dispatcher
- * Called from assembly interrupt handler with syscall number and arguments
+ * Print syscall statistics
  */
-int syscall_dispatch(uint32_t syscall_num, uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4) {
-    // Validate syscall number
-    if (syscall_num >= SYSCALL_MAX) {
-        kprintf_color(MAKE_COLOR(COLOR_RED, COLOR_BLACK),
-                     "[SYSCALL ERROR] Invalid syscall number: %d\n", syscall_num);
-        return -1;
+void syscall_print_stats(void) {
+    if (!syscall_state.initialized) {
+        console_print("[SYSCALL] Not initialized\n");
+        return;
     }
 
-    // Call the appropriate system call handler
-    syscall_handler_t handler = syscall_table[syscall_num];
-    if (handler) {
-        return handler(arg1, arg2, arg3, arg4);
+    console_print("\n[SYSCALL] Statistics:\n");
+    console_print("  Total syscalls:  ");
+    console_print_dec(syscall_state.total_syscalls);
+    console_print("\n\n");
+
+    console_print("  Syscall breakdown:\n");
+
+    const char *syscall_names[] = {
+        "exit", "write", "read", "open", "close",
+        "getpid", "fork", "exec", "wait", "kill",
+        "sleep", "yield", "mmap", "munmap", "brk", "sbrk"
+    };
+
+    for (int i = 0; i <= SYSCALL_MAX; i++) {
+        if (syscall_state.syscall_counts[i] > 0) {
+            console_print("    ");
+            console_print_dec(i);
+            console_print(" (");
+            console_print(syscall_names[i]);
+            console_print("): ");
+            console_print_dec(syscall_state.syscall_counts[i]);
+            console_print("\n");
+        }
     }
-
-    return -1;
-}
-
-/**
- * SYS_EXIT - Exit current process
- * arg1 = exit_code
- */
-int sys_exit(uint32_t exit_code, uint32_t arg2, uint32_t arg3, uint32_t arg4) {
-    (void)arg2;
-    (void)arg3;
-    (void)arg4;
-
-    process_t *current = process_current();
-    if (current) {
-        kprintf("[SYSCALL] Process %d exiting with code %d\n",
-                current->pid, exit_code);
-    }
-
-    process_exit();
-
-    // Should never return
-    return 0;
-}
-
-/**
- * SYS_WRITE - Write to screen (stdout)
- * arg1 = fd (file descriptor, ignored for now)
- * arg2 = buffer (pointer to string)
- * arg3 = count (number of bytes)
- */
-int sys_write(uint32_t fd, uint32_t buffer, uint32_t count, uint32_t arg4) {
-    (void)fd;    // Ignore fd for now, always write to screen
-    (void)arg4;
-
-    if (!buffer || count == 0) {
-        return -1;
-    }
-
-    char *str = (char *)buffer;
-
-    // Write each character to screen
-    for (uint32_t i = 0; i < count; i++) {
-        if (str[i] == '\0') break;
-
-        // Write single character as string
-        char temp[2] = {str[i], '\0'};
-        screen_write(temp);
-    }
-
-    return (int)count;
-}
-
-/**
- * SYS_READ - Read from keyboard (stdin)
- * arg1 = fd (file descriptor, ignored for now)
- * arg2 = buffer (pointer to buffer)
- * arg3 = count (max bytes to read)
- * Returns: number of bytes read
- */
-int sys_read(uint32_t fd, uint32_t buffer, uint32_t count, uint32_t arg4) {
-    (void)fd;
-    (void)buffer;
-    (void)count;
-    (void)arg4;
-
-    // TODO: Implement keyboard read
-    // For now, just return 0 (no data)
-    return 0;
-}
-
-/**
- * SYS_GETPID - Get current process ID
- * Returns: current PID
- */
-int sys_getpid(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4) {
-    (void)arg1;
-    (void)arg2;
-    (void)arg3;
-    (void)arg4;
-
-    process_t *current = process_current();
-    if (current) {
-        return current->pid;
-    }
-
-    return -1;
-}
-
-/**
- * SYS_SLEEP - Sleep for specified milliseconds
- * arg1 = milliseconds
- */
-int sys_sleep(uint32_t milliseconds, uint32_t arg2, uint32_t arg3, uint32_t arg4) {
-    (void)arg2;
-    (void)arg3;
-    (void)arg4;
-
-    process_sleep(milliseconds);
-    return 0;
-}
-
-/**
- * SYS_YIELD - Yield CPU to next process
- */
-int sys_yield(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4) {
-    (void)arg1;
-    (void)arg2;
-    (void)arg3;
-    (void)arg4;
-
-    process_yield();
-    return 0;
-}
-
-/**
- * SYS_SEND - Send IPC message
- * arg1 = target_pid
- * arg2 = message buffer
- * arg3 = message length
- */
-int sys_send(uint32_t target_pid, uint32_t message, uint32_t length, uint32_t arg4) {
-    (void)arg4;
-
-    if (!message || length == 0) {
-        return -1;
-    }
-
-    return process_send_message((pid_t)target_pid, (const char *)message, length);
-}
-
-/**
- * SYS_RECV - Receive IPC message
- * arg1 = buffer
- * arg2 = max_length
- * arg3 = sender_ptr (optional, can be NULL)
- */
-int sys_recv(uint32_t buffer, uint32_t max_length, uint32_t sender_ptr, uint32_t arg4) {
-    (void)arg4;
-
-    if (!buffer || max_length == 0) {
-        return -1;
-    }
-
-    pid_t sender;
-    int result = process_receive_message((char *)buffer, max_length, &sender);
-
-    // If caller wants sender PID, write it
-    if (sender_ptr && result > 0) {
-        *((pid_t *)sender_ptr) = sender;
-    }
-
-    return result;
 }

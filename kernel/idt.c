@@ -1,159 +1,260 @@
-// Interrupt Descriptor Table implementation
-#include "../include/idt.h"
-#include "../include/types.h"
-#include "../include/ports.h"
-#include "../include/screen.h"
+/**
+ * AuroraOS Kernel - IDT Implementation
+ *
+ * Manages interrupt descriptor table and interrupt handling
+ */
 
-// IDT has 256 entries
-#define IDT_ENTRIES 256
+#include "idt.h"
+#include "console.h"
+#include "io.h"
+#include "timer.h"
+#include "keyboard.h"
 
-// PIC (Programmable Interrupt Controller) ports
-#define PIC1_COMMAND 0x20
-#define PIC1_DATA    0x21
-#define PIC2_COMMAND 0xA0
-#define PIC2_DATA    0xA1
+// IDT entries and pointer
+static idt_entry_t idt[IDT_ENTRIES];
+static idt_ptr_t idt_ptr;
 
-// PIC commands
-#define PIC_EOI      0x20  // End of Interrupt
+// Exception names for debugging
+static const char *exception_names[] = {
+    "Divide By Zero",
+    "Debug",
+    "Non-Maskable Interrupt",
+    "Breakpoint",
+    "Overflow",
+    "Bound Range Exceeded",
+    "Invalid Opcode",
+    "Device Not Available",
+    "Double Fault",
+    "Coprocessor Segment Overrun",
+    "Invalid TSS",
+    "Segment Not Present",
+    "Stack Segment Fault",
+    "General Protection Fault",
+    "Page Fault",
+    "Reserved",
+    "x87 Floating-Point Exception",
+    "Alignment Check",
+    "Machine Check",
+    "SIMD Floating-Point Exception",
+    "Virtualization Exception",
+    "Reserved", "Reserved", "Reserved", "Reserved", "Reserved",
+    "Reserved", "Reserved", "Reserved", "Reserved",
+    "Security Exception",
+    "Reserved"
+};
 
-// IDT entries
-struct idt_entry idt[IDT_ENTRIES];
-struct idt_ptr idtp;
-
-// External assembly function to load IDT
-extern void idt_load(uint32_t);
-
-// Set a gate in the IDT
-void idt_set_gate(uint8_t num, uint32_t handler, uint16_t selector, uint8_t flags) {
+/**
+ * Set an IDT gate
+ */
+void idt_set_gate(uint8_t num, uint64_t handler, uint16_t selector, uint8_t type_attr) {
     idt[num].offset_low = handler & 0xFFFF;
-    idt[num].offset_high = (handler >> 16) & 0xFFFF;
+    idt[num].offset_mid = (handler >> 16) & 0xFFFF;
+    idt[num].offset_high = (handler >> 32) & 0xFFFFFFFF;
     idt[num].selector = selector;
-    idt[num].zero = 0;
-    idt[num].type_attr = flags;
+    idt[num].ist = 0;  // Not using IST for now
+    idt[num].type_attr = type_attr;
+    idt[num].reserved = 0;
 }
 
-// Remap the PIC (Programmable Interrupt Controller)
-// By default, IRQs 0-7 are mapped to interrupts 8-15
-// This conflicts with CPU exceptions, so we remap them to 32-47
-void pic_remap(void) {
-    // Start initialization sequence
-    outb(PIC1_COMMAND, 0x11);
-    io_wait();
-    outb(PIC2_COMMAND, 0x11);
-    io_wait();
+/**
+ * Remap PIC (Programmable Interrupt Controller)
+ *
+ * By default, IRQs 0-7 are mapped to exceptions 8-15, which conflicts
+ * with CPU exceptions. We remap them to 32-47.
+ */
+static void pic_remap(void) {
+    // Save masks
+    uint8_t mask1 = inb(0x21);
+    uint8_t mask2 = inb(0xA1);
 
-    // Set vector offsets
-    outb(PIC1_DATA, 0x20);  // Master PIC offset to 32
-    io_wait();
-    outb(PIC2_DATA, 0x28);  // Slave PIC offset to 40
-    io_wait();
+    // Start initialization sequence (ICW1)
+    outb(0x20, 0x11);  // Master PIC
+    outb(0xA0, 0x11);  // Slave PIC
 
-    // Tell Master PIC that there's a slave PIC at IRQ2
-    outb(PIC1_DATA, 0x04);
-    io_wait();
-    // Tell Slave PIC its cascade identity
-    outb(PIC2_DATA, 0x02);
-    io_wait();
+    // Set vector offsets (ICW2)
+    outb(0x21, IRQ_BASE);      // Master PIC: IRQ 0-7 → 32-39
+    outb(0xA1, IRQ_BASE + 8);  // Slave PIC: IRQ 8-15 → 40-47
 
-    // Set 8086 mode
-    outb(PIC1_DATA, 0x01);
-    io_wait();
-    outb(PIC2_DATA, 0x01);
-    io_wait();
+    // Tell Master PIC there's a slave at IRQ2 (ICW3)
+    outb(0x21, 0x04);
+    // Tell Slave PIC its cascade identity (ICW3)
+    outb(0xA1, 0x02);
 
-    // Set interrupt masks: Enable only timer (IRQ0) and keyboard (IRQ1)
-    // Mask format: bit 0 = IRQ0, bit 1 = IRQ1, etc. (1 = masked/disabled, 0 = enabled)
-    outb(PIC1_DATA, 0xFC);  // 11111100 - Enable IRQ0 (timer) and IRQ1 (keyboard)
-    outb(PIC2_DATA, 0xFF);  // 11111111 - Mask all slave PIC interrupts
+    // Set 8086 mode (ICW4)
+    outb(0x21, 0x01);
+    outb(0xA1, 0x01);
+
+    // Restore masks
+    outb(0x21, mask1);
+    outb(0xA1, mask2);
 }
 
-// Send End of Interrupt signal to PIC
-void pic_send_eoi(uint8_t irq) {
-    if (irq >= 8) {
-        outb(PIC2_COMMAND, PIC_EOI);
-    }
-    outb(PIC1_COMMAND, PIC_EOI);
-}
-
-// Initialize the IDT
+/**
+ * Initialize IDT
+ */
 void idt_init(void) {
-    // Set up IDT pointer
-    idtp.limit = (sizeof(struct idt_entry) * IDT_ENTRIES) - 1;
-    idtp.base = (uint32_t)&idt;
+    console_print("[IDT] Initializing Interrupt Descriptor Table...\n");
 
     // Clear IDT
     for (int i = 0; i < IDT_ENTRIES; i++) {
-        idt[i].offset_low = 0;
-        idt[i].selector = 0;
-        idt[i].zero = 0;
-        idt[i].type_attr = 0;
-        idt[i].offset_high = 0;
+        idt_set_gate(i, 0, 0, 0);
     }
 
-    // Remap the PIC
+    // Remap PIC before setting up IRQ handlers
     pic_remap();
 
-    // Install ISRs (CPU exceptions 0-31)
-    idt_set_gate(0, (uint32_t)isr0, 0x08, 0x8E);
-    idt_set_gate(1, (uint32_t)isr1, 0x08, 0x8E);
-    idt_set_gate(2, (uint32_t)isr2, 0x08, 0x8E);
-    idt_set_gate(3, (uint32_t)isr3, 0x08, 0x8E);
-    idt_set_gate(4, (uint32_t)isr4, 0x08, 0x8E);
-    idt_set_gate(5, (uint32_t)isr5, 0x08, 0x8E);
-    idt_set_gate(6, (uint32_t)isr6, 0x08, 0x8E);
-    idt_set_gate(7, (uint32_t)isr7, 0x08, 0x8E);
-    idt_set_gate(8, (uint32_t)isr8, 0x08, 0x8E);
-    idt_set_gate(9, (uint32_t)isr9, 0x08, 0x8E);
-    idt_set_gate(10, (uint32_t)isr10, 0x08, 0x8E);
-    idt_set_gate(11, (uint32_t)isr11, 0x08, 0x8E);
-    idt_set_gate(12, (uint32_t)isr12, 0x08, 0x8E);
-    idt_set_gate(13, (uint32_t)isr13, 0x08, 0x8E);
-    idt_set_gate(14, (uint32_t)isr14, 0x08, 0x8E);
-    idt_set_gate(15, (uint32_t)isr15, 0x08, 0x8E);
-    idt_set_gate(16, (uint32_t)isr16, 0x08, 0x8E);
-    idt_set_gate(17, (uint32_t)isr17, 0x08, 0x8E);
-    idt_set_gate(18, (uint32_t)isr18, 0x08, 0x8E);
-    idt_set_gate(19, (uint32_t)isr19, 0x08, 0x8E);
-    idt_set_gate(20, (uint32_t)isr20, 0x08, 0x8E);
-    idt_set_gate(21, (uint32_t)isr21, 0x08, 0x8E);
-    idt_set_gate(22, (uint32_t)isr22, 0x08, 0x8E);
-    idt_set_gate(23, (uint32_t)isr23, 0x08, 0x8E);
-    idt_set_gate(24, (uint32_t)isr24, 0x08, 0x8E);
-    idt_set_gate(25, (uint32_t)isr25, 0x08, 0x8E);
-    idt_set_gate(26, (uint32_t)isr26, 0x08, 0x8E);
-    idt_set_gate(27, (uint32_t)isr27, 0x08, 0x8E);
-    idt_set_gate(28, (uint32_t)isr28, 0x08, 0x8E);
-    idt_set_gate(29, (uint32_t)isr29, 0x08, 0x8E);
-    idt_set_gate(30, (uint32_t)isr30, 0x08, 0x8E);
-    idt_set_gate(31, (uint32_t)isr31, 0x08, 0x8E);
+    // Install exception handlers (0-31)
+    idt_set_gate(0, (uint64_t)isr0, 0x08, IDT_TYPE_INTERRUPT_GATE);
+    idt_set_gate(1, (uint64_t)isr1, 0x08, IDT_TYPE_INTERRUPT_GATE);
+    idt_set_gate(2, (uint64_t)isr2, 0x08, IDT_TYPE_INTERRUPT_GATE);
+    idt_set_gate(3, (uint64_t)isr3, 0x08, IDT_TYPE_INTERRUPT_GATE);
+    idt_set_gate(4, (uint64_t)isr4, 0x08, IDT_TYPE_INTERRUPT_GATE);
+    idt_set_gate(5, (uint64_t)isr5, 0x08, IDT_TYPE_INTERRUPT_GATE);
+    idt_set_gate(6, (uint64_t)isr6, 0x08, IDT_TYPE_INTERRUPT_GATE);
+    idt_set_gate(7, (uint64_t)isr7, 0x08, IDT_TYPE_INTERRUPT_GATE);
+    idt_set_gate(8, (uint64_t)isr8, 0x08, IDT_TYPE_INTERRUPT_GATE);
+    idt_set_gate(9, (uint64_t)isr9, 0x08, IDT_TYPE_INTERRUPT_GATE);
+    idt_set_gate(10, (uint64_t)isr10, 0x08, IDT_TYPE_INTERRUPT_GATE);
+    idt_set_gate(11, (uint64_t)isr11, 0x08, IDT_TYPE_INTERRUPT_GATE);
+    idt_set_gate(12, (uint64_t)isr12, 0x08, IDT_TYPE_INTERRUPT_GATE);
+    idt_set_gate(13, (uint64_t)isr13, 0x08, IDT_TYPE_INTERRUPT_GATE);
+    idt_set_gate(14, (uint64_t)isr14, 0x08, IDT_TYPE_INTERRUPT_GATE);
+    idt_set_gate(15, (uint64_t)isr15, 0x08, IDT_TYPE_INTERRUPT_GATE);
+    idt_set_gate(16, (uint64_t)isr16, 0x08, IDT_TYPE_INTERRUPT_GATE);
+    idt_set_gate(17, (uint64_t)isr17, 0x08, IDT_TYPE_INTERRUPT_GATE);
+    idt_set_gate(18, (uint64_t)isr18, 0x08, IDT_TYPE_INTERRUPT_GATE);
+    idt_set_gate(19, (uint64_t)isr19, 0x08, IDT_TYPE_INTERRUPT_GATE);
+    idt_set_gate(20, (uint64_t)isr20, 0x08, IDT_TYPE_INTERRUPT_GATE);
+    idt_set_gate(21, (uint64_t)isr21, 0x08, IDT_TYPE_INTERRUPT_GATE);
+    idt_set_gate(22, (uint64_t)isr22, 0x08, IDT_TYPE_INTERRUPT_GATE);
+    idt_set_gate(23, (uint64_t)isr23, 0x08, IDT_TYPE_INTERRUPT_GATE);
+    idt_set_gate(24, (uint64_t)isr24, 0x08, IDT_TYPE_INTERRUPT_GATE);
+    idt_set_gate(25, (uint64_t)isr25, 0x08, IDT_TYPE_INTERRUPT_GATE);
+    idt_set_gate(26, (uint64_t)isr26, 0x08, IDT_TYPE_INTERRUPT_GATE);
+    idt_set_gate(27, (uint64_t)isr27, 0x08, IDT_TYPE_INTERRUPT_GATE);
+    idt_set_gate(28, (uint64_t)isr28, 0x08, IDT_TYPE_INTERRUPT_GATE);
+    idt_set_gate(29, (uint64_t)isr29, 0x08, IDT_TYPE_INTERRUPT_GATE);
+    idt_set_gate(30, (uint64_t)isr30, 0x08, IDT_TYPE_INTERRUPT_GATE);
+    idt_set_gate(31, (uint64_t)isr31, 0x08, IDT_TYPE_INTERRUPT_GATE);
 
-    // Install IRQs (Hardware interrupts 32-47)
-    idt_set_gate(32, (uint32_t)irq0, 0x08, 0x8E);
-    idt_set_gate(33, (uint32_t)irq1, 0x08, 0x8E);
-    idt_set_gate(34, (uint32_t)irq2, 0x08, 0x8E);
-    idt_set_gate(35, (uint32_t)irq3, 0x08, 0x8E);
-    idt_set_gate(36, (uint32_t)irq4, 0x08, 0x8E);
-    idt_set_gate(37, (uint32_t)irq5, 0x08, 0x8E);
-    idt_set_gate(38, (uint32_t)irq6, 0x08, 0x8E);
-    idt_set_gate(39, (uint32_t)irq7, 0x08, 0x8E);
-    idt_set_gate(40, (uint32_t)irq8, 0x08, 0x8E);
-    idt_set_gate(41, (uint32_t)irq9, 0x08, 0x8E);
-    idt_set_gate(42, (uint32_t)irq10, 0x08, 0x8E);
-    idt_set_gate(43, (uint32_t)irq11, 0x08, 0x8E);
-    idt_set_gate(44, (uint32_t)irq12, 0x08, 0x8E);
-    idt_set_gate(45, (uint32_t)irq13, 0x08, 0x8E);
-    idt_set_gate(46, (uint32_t)irq14, 0x08, 0x8E);
-    idt_set_gate(47, (uint32_t)irq15, 0x08, 0x8E);
+    // Install IRQ handlers (32-47)
+    idt_set_gate(32, (uint64_t)irq0, 0x08, IDT_TYPE_INTERRUPT_GATE);
+    idt_set_gate(33, (uint64_t)irq1, 0x08, IDT_TYPE_INTERRUPT_GATE);
+    idt_set_gate(34, (uint64_t)irq2, 0x08, IDT_TYPE_INTERRUPT_GATE);
+    idt_set_gate(35, (uint64_t)irq3, 0x08, IDT_TYPE_INTERRUPT_GATE);
+    idt_set_gate(36, (uint64_t)irq4, 0x08, IDT_TYPE_INTERRUPT_GATE);
+    idt_set_gate(37, (uint64_t)irq5, 0x08, IDT_TYPE_INTERRUPT_GATE);
+    idt_set_gate(38, (uint64_t)irq6, 0x08, IDT_TYPE_INTERRUPT_GATE);
+    idt_set_gate(39, (uint64_t)irq7, 0x08, IDT_TYPE_INTERRUPT_GATE);
+    idt_set_gate(40, (uint64_t)irq8, 0x08, IDT_TYPE_INTERRUPT_GATE);
+    idt_set_gate(41, (uint64_t)irq9, 0x08, IDT_TYPE_INTERRUPT_GATE);
+    idt_set_gate(42, (uint64_t)irq10, 0x08, IDT_TYPE_INTERRUPT_GATE);
+    idt_set_gate(43, (uint64_t)irq11, 0x08, IDT_TYPE_INTERRUPT_GATE);
+    idt_set_gate(44, (uint64_t)irq12, 0x08, IDT_TYPE_INTERRUPT_GATE);
+    idt_set_gate(45, (uint64_t)irq13, 0x08, IDT_TYPE_INTERRUPT_GATE);
+    idt_set_gate(46, (uint64_t)irq14, 0x08, IDT_TYPE_INTERRUPT_GATE);
+    idt_set_gate(47, (uint64_t)irq15, 0x08, IDT_TYPE_INTERRUPT_GATE);
 
-    // Load the IDT
-    idt_load((uint32_t)&idtp);
+    // Load IDT
+    idt_ptr.limit = sizeof(idt) - 1;
+    idt_ptr.base = (uint64_t)&idt;
+    idt_load();
 
-    // Print messages BEFORE enabling interrupts (to avoid race conditions)
-    screen_write_color("[IDT] ", MAKE_COLOR(COLOR_GREEN, COLOR_BLACK));
-    screen_write("Interrupt Descriptor Table initialized\n");
-    screen_write_color("[PIC] ", MAKE_COLOR(COLOR_GREEN, COLOR_BLACK));
-    screen_write("Programmable Interrupt Controller configured\n");
+    console_print("[IDT] Loaded with 256 entries\n");
+    console_print("[IDT] Exceptions: 0-31, IRQs: 32-47\n");
+}
 
-    // Enable interrupts (after all screen output is done)
-    __asm__ __volatile__("sti");
+/**
+ * Load IDT (called from C, implemented in idt_asm.S)
+ */
+extern void idt_load_asm(idt_ptr_t *ptr);
+
+void idt_load(void) {
+    idt_load_asm(&idt_ptr);
+}
+
+/**
+ * CPU Exception Handler
+ */
+void exception_handler(interrupt_frame_t *frame) {
+    console_print("\n========================================\n");
+    console_print("[EXCEPTION] CPU Exception Occurred!\n");
+    console_print("========================================\n");
+
+    // Print exception name
+    if (frame->int_no < 32) {
+        console_print("Exception: ");
+        console_print(exception_names[frame->int_no]);
+        console_print("\n");
+    } else {
+        console_print("Unknown exception: ");
+        console_print_hex(frame->int_no);
+        console_print("\n");
+    }
+
+    // Print error code if present
+    console_print("Error Code: ");
+    console_print_hex(frame->error_code);
+    console_print("\n");
+
+    // Print register dump
+    console_print("\nRegisters:\n");
+    console_print("  RIP="); console_print_hex(frame->rip);
+    console_print(" RSP="); console_print_hex(frame->rsp);
+    console_print("\n");
+    console_print("  RAX="); console_print_hex(frame->rax);
+    console_print(" RBX="); console_print_hex(frame->rbx);
+    console_print("\n");
+    console_print("  RCX="); console_print_hex(frame->rcx);
+    console_print(" RDX="); console_print_hex(frame->rdx);
+    console_print("\n");
+    console_print("  RSI="); console_print_hex(frame->rsi);
+    console_print(" RDI="); console_print_hex(frame->rdi);
+    console_print("\n");
+    console_print("  CS="); console_print_hex(frame->cs);
+    console_print(" SS="); console_print_hex(frame->ss);
+    console_print("\n");
+    console_print("  RFLAGS="); console_print_hex(frame->rflags);
+    console_print("\n");
+
+    console_print("\n[HALT] System halted due to exception\n");
+    console_print("========================================\n");
+
+    // Halt the system
+    while (1) {
+        __asm__ __volatile__("cli; hlt");
+    }
+}
+
+/**
+ * IRQ Handler
+ */
+void irq_handler(interrupt_frame_t *frame) {
+    // Send EOI (End of Interrupt) to PIC
+    if (frame->int_no >= 40) {
+        // Slave PIC (IRQ 8-15)
+        outb(0xA0, 0x20);
+    }
+    // Master PIC (IRQ 0-7 or cascaded from slave)
+    outb(0x20, 0x20);
+
+    // Handle specific IRQs
+    switch (frame->int_no) {
+        case IRQ_TIMER:
+            // Timer tick - call timer handler
+            timer_irq_handler();
+            break;
+
+        case IRQ_KEYBOARD:
+            // Keyboard interrupt - call keyboard handler
+            keyboard_irq_handler();
+            break;
+
+        default:
+            // Unknown IRQ
+            console_print("[IRQ] Unhandled IRQ: ");
+            console_print_hex(frame->int_no - IRQ_BASE);
+            console_print("\n");
+            break;
+    }
 }

@@ -1,119 +1,215 @@
-// Timer (PIT) driver implementation
-#include "../include/timer.h"
-#include "../include/ports.h"
-#include "../include/screen.h"
-#include "../include/string.h"
-#include "../include/types.h"
-#include "../include/process.h"
+/**
+ * AuroraOS Kernel - Timer Driver Implementation
+ *
+ * PIT (Programmable Interval Timer) driver for system timing
+ */
 
-// PIT (Programmable Interval Timer) I/O ports
-#define PIT_CHANNEL0 0x40   // Channel 0 data port (IRQ0)
-#define PIT_CHANNEL1 0x41   // Channel 1 data port
-#define PIT_CHANNEL2 0x42   // Channel 2 data port
-#define PIT_COMMAND  0x43   // Mode/Command register
+#include "timer.h"
+#include "io.h"
+#include "console.h"
+#include "types.h"
+#include "scheduler.h"
 
-// PIT frequency (oscillator frequency in Hz)
-#define PIT_BASE_FREQUENCY 1193182
-
-// System uptime in ticks (milliseconds if TIMER_FREQUENCY = 1000)
-static volatile uint32_t system_ticks = 0;
+// Timer state
+static struct {
+    uint64_t ticks;
+    uint32_t frequency;
+    bool initialized;
+    timer_callback_t callback;
+} timer_state = {0};
 
 /**
- * Initialize the PIT
+ * Set PIT frequency
+ *
+ * @param frequency Desired frequency in Hz
  */
-void timer_init(void) {
-    // Calculate divisor for desired frequency
-    // Frequency = PIT_BASE_FREQUENCY / divisor
-    uint32_t divisor = PIT_BASE_FREQUENCY / TIMER_FREQUENCY;
+void timer_set_frequency(uint32_t frequency) {
+    if (frequency == 0 || frequency > PIT_BASE_FREQUENCY) {
+        console_print("[TIMER] ERROR: Invalid frequency\n");
+        return;
+    }
 
-    // Command byte:
-    // Bits 7-6: Select channel (00 = channel 0)
-    // Bits 5-4: Access mode (11 = lobyte/hibyte)
-    // Bits 3-1: Operating mode (011 = square wave generator)
-    // Bit 0:    BCD/Binary mode (0 = 16-bit binary)
-    // Result: 0x36 = 00110110b
-    uint8_t command = 0x36;
+    // Calculate divisor: PIT_BASE_FREQUENCY / desired_frequency
+    uint32_t divisor = PIT_BASE_FREQUENCY / frequency;
 
-    // Send command byte
+    // Clamp divisor to valid range (1-65535)
+    if (divisor < 1) divisor = 1;
+    if (divisor > 65535) divisor = 65535;
+
+    // Send command byte:
+    // - Channel 0
+    // - Access mode: lobyte/hibyte
+    // - Mode 3: Square wave generator
+    // - Binary mode
+    uint8_t command = PIT_CHANNEL0_SELECT | PIT_ACCESS_LOHI | PIT_MODE_3 | PIT_BINARY_MODE;
     outb(PIT_COMMAND, command);
 
     // Send divisor (low byte, then high byte)
     outb(PIT_CHANNEL0, (uint8_t)(divisor & 0xFF));
     outb(PIT_CHANNEL0, (uint8_t)((divisor >> 8) & 0xFF));
 
-    // Reset tick counter
-    system_ticks = 0;
-
-    // Print initialization message
-    screen_write_color("[TIMER] ", MAKE_COLOR(COLOR_GREEN, COLOR_BLACK));
-    screen_write("PIT initialized at ");
-    screen_write_dec(TIMER_FREQUENCY);
-    screen_write(" Hz (");
-    screen_write_dec(1000 / TIMER_FREQUENCY);
-    screen_write("ms per tick)\n");
+    timer_state.frequency = frequency;
 }
 
 /**
- * Timer interrupt handler
- * Called by IRQ0 handler on every timer tick
+ * Get current timer frequency
  */
-void timer_handler(void) {
-    system_ticks++;
+uint32_t timer_get_frequency(void) {
+    return timer_state.frequency;
+}
 
-    // Check and wake up sleeping processes every tick
-    process_check_sleeping();
+/**
+ * Get total ticks since boot
+ */
+uint64_t timer_get_ticks(void) {
+    return timer_state.ticks;
+}
 
-    // Call process scheduler every 10 ticks (10ms time slice)
-    // This enables preemptive multitasking
-    if (system_ticks % 10 == 0) {
-        process_schedule();
+/**
+ * Get milliseconds since boot
+ */
+uint64_t timer_get_milliseconds(void) {
+    if (timer_state.frequency == 0) return 0;
+    return (timer_state.ticks * 1000) / timer_state.frequency;
+}
+
+/**
+ * Get seconds since boot
+ */
+uint64_t timer_get_seconds(void) {
+    if (timer_state.frequency == 0) return 0;
+    return timer_state.ticks / timer_state.frequency;
+}
+
+/**
+ * Timer IRQ handler (called from IDT IRQ 0)
+ * This is called every timer tick
+ */
+void timer_irq_handler(void) {
+    if (!timer_state.initialized) {
+        return;
+    }
+
+    // Increment tick counter
+    timer_state.ticks++;
+
+    // Call scheduler tick
+    scheduler_tick();
+
+    // Call registered callback if any
+    if (timer_state.callback) {
+        timer_state.callback();
+    }
+
+    // Note: EOI (End of Interrupt) is handled by the IDT IRQ handler
+}
+
+/**
+ * Register a callback function to be called on each timer tick
+ */
+void timer_register_callback(timer_callback_t callback) {
+    timer_state.callback = callback;
+}
+
+/**
+ * Sleep for specified milliseconds
+ *
+ * @param milliseconds Time to sleep in milliseconds
+ *
+ * Note: This is a busy-wait implementation. Will be replaced with
+ * proper sleep when we have process scheduling.
+ */
+void timer_sleep(uint32_t milliseconds) {
+    if (!timer_state.initialized || timer_state.frequency == 0) {
+        return;
+    }
+
+    uint64_t start = timer_get_milliseconds();
+    uint64_t target = start + milliseconds;
+
+    // Busy wait until target time reached
+    while (timer_get_milliseconds() < target) {
+        __asm__ __volatile__("hlt");  // Halt until next interrupt
     }
 }
 
 /**
- * Get system uptime in ticks
+ * Wait for specified number of ticks
  */
-uint32_t timer_get_ticks(void) {
-    return system_ticks;
-}
+void timer_wait_ticks(uint32_t ticks) {
+    if (!timer_state.initialized) {
+        return;
+    }
 
-/**
- * Get system uptime in seconds
- */
-uint32_t timer_get_seconds(void) {
-    return system_ticks / TIMER_FREQUENCY;
-}
+    uint64_t start = timer_state.ticks;
+    uint64_t target = start + ticks;
 
-/**
- * Busy-wait for specified number of ticks
- * WARNING: This blocks the CPU
- */
-void timer_wait(uint32_t ticks) {
-    uint32_t start = system_ticks;
-    while (system_ticks < start + ticks) {
-        __asm__ __volatile__("hlt");  // Wait for next interrupt
+    while (timer_state.ticks < target) {
+        __asm__ __volatile__("hlt");
     }
 }
 
 /**
- * Format uptime as "HH:MM:SS"
+ * Initialize PIT timer
+ *
+ * @param frequency Desired timer frequency in Hz (default: 1000 Hz = 1ms)
  */
-void timer_format_uptime(char *buffer) {
-    uint32_t seconds = timer_get_seconds();
+void timer_init(uint32_t frequency) {
+    console_print("[TIMER] Initializing Programmable Interval Timer...\n");
 
-    uint32_t hours = seconds / 3600;
-    uint32_t minutes = (seconds % 3600) / 60;
-    uint32_t secs = seconds % 60;
+    // Validate frequency
+    if (frequency == 0) {
+        frequency = TIMER_FREQ_1000HZ;  // Default to 1000 Hz (1ms tick)
+    }
 
-    // Format: HH:MM:SS
-    // Convert each component to string
-    buffer[0] = '0' + (hours / 10) % 10;
-    buffer[1] = '0' + (hours % 10);
-    buffer[2] = ':';
-    buffer[3] = '0' + (minutes / 10);
-    buffer[4] = '0' + (minutes % 10);
-    buffer[5] = ':';
-    buffer[6] = '0' + (secs / 10);
-    buffer[7] = '0' + (secs % 10);
-    buffer[8] = '\0';
+    // Reset state
+    timer_state.ticks = 0;
+    timer_state.frequency = 0;
+    timer_state.callback = NULL;
+
+    // Set PIT frequency
+    timer_set_frequency(frequency);
+
+    timer_state.initialized = true;
+
+    console_print("[TIMER] Initialized at ");
+    console_print_dec(frequency);
+    console_print(" Hz (");
+
+    uint32_t tick_ms = 1000 / frequency;
+    console_print_dec(tick_ms);
+    console_print("ms per tick)\n");
+
+    console_print("[TIMER] IRQ 0 will fire every ");
+    console_print_dec(tick_ms);
+    console_print("ms\n");
+}
+
+/**
+ * Print timer statistics
+ */
+void timer_print_stats(void) {
+    if (!timer_state.initialized) {
+        console_print("[TIMER] Not initialized\n");
+        return;
+    }
+
+    console_print("\n[TIMER] Statistics:\n");
+    console_print("  Frequency:     ");
+    console_print_dec(timer_state.frequency);
+    console_print(" Hz\n");
+
+    console_print("  Total Ticks:   ");
+    console_print_dec(timer_state.ticks);
+    console_print("\n");
+
+    console_print("  Uptime:        ");
+    console_print_dec(timer_get_seconds());
+    console_print(".");
+    console_print_dec(timer_get_milliseconds() % 1000);
+    console_print(" seconds\n");
+
+    console_print("  Milliseconds:  ");
+    console_print_dec(timer_get_milliseconds());
+    console_print(" ms\n");
 }

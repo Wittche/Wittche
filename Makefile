@@ -70,7 +70,25 @@ BOOT_OBJS = $(BUILD_DIR)/boot.o
 KERNEL_OBJS = $(BUILD_DIR)/multiboot.o \
               $(BUILD_DIR)/entry.o \
               $(BUILD_DIR)/main.o \
-              $(BUILD_DIR)/console.o
+              $(BUILD_DIR)/console.o \
+              $(BUILD_DIR)/gdt.o \
+              $(BUILD_DIR)/gdt_asm.o \
+              $(BUILD_DIR)/idt.o \
+              $(BUILD_DIR)/idt_asm.o \
+              $(BUILD_DIR)/timer.o \
+              $(BUILD_DIR)/keyboard.o \
+              $(BUILD_DIR)/pmm.o \
+              $(BUILD_DIR)/vmm.o \
+              $(BUILD_DIR)/vmm_asm.o \
+              $(BUILD_DIR)/kheap.o \
+              $(BUILD_DIR)/process.o \
+              $(BUILD_DIR)/scheduler.o \
+              $(BUILD_DIR)/switch.o \
+              $(BUILD_DIR)/tss.o \
+              $(BUILD_DIR)/syscall.o \
+              $(BUILD_DIR)/syscall_asm.o \
+              $(BUILD_DIR)/usermode.o \
+              $(BUILD_DIR)/usermode_test.o
 
 # Default target
 .PHONY: all
@@ -115,12 +133,84 @@ $(BUILD_DIR)/entry.o: $(KERNEL_DIR)/entry.S | $(BUILD_DIR)
 	@echo "[AS] Assembling kernel entry..."
 	$(AS) $(KERNEL_AS_FLAGS) $< -o $@
 
-$(BUILD_DIR)/main.o: $(KERNEL_DIR)/main.c $(KERNEL_DIR)/types.h $(KERNEL_DIR)/boot.h $(KERNEL_DIR)/console.h | $(BUILD_DIR)
+$(BUILD_DIR)/main.o: $(KERNEL_DIR)/main.c $(KERNEL_DIR)/types.h $(KERNEL_DIR)/boot.h $(KERNEL_DIR)/console.h $(KERNEL_DIR)/gdt.h $(KERNEL_DIR)/idt.h | $(BUILD_DIR)
 	@echo "[CC] Compiling kernel main..."
 	$(KERNEL_CC) $(KERNEL_CC_FLAGS) -c $< -o $@
 
 $(BUILD_DIR)/console.o: $(KERNEL_DIR)/console.c $(KERNEL_DIR)/console.h $(KERNEL_DIR)/types.h | $(BUILD_DIR)
 	@echo "[CC] Compiling console..."
+	$(KERNEL_CC) $(KERNEL_CC_FLAGS) -c $< -o $@
+
+$(BUILD_DIR)/gdt.o: $(KERNEL_DIR)/gdt.c $(KERNEL_DIR)/gdt.h $(KERNEL_DIR)/types.h $(KERNEL_DIR)/console.h | $(BUILD_DIR)
+	@echo "[CC] Compiling GDT..."
+	$(KERNEL_CC) $(KERNEL_CC_FLAGS) -c $< -o $@
+
+$(BUILD_DIR)/gdt_asm.o: $(KERNEL_DIR)/gdt_asm.S | $(BUILD_DIR)
+	@echo "[AS] Assembling GDT functions..."
+	$(AS) $(KERNEL_AS_FLAGS) $< -o $@
+
+$(BUILD_DIR)/idt.o: $(KERNEL_DIR)/idt.c $(KERNEL_DIR)/idt.h $(KERNEL_DIR)/types.h $(KERNEL_DIR)/console.h | $(BUILD_DIR)
+	@echo "[CC] Compiling IDT..."
+	$(KERNEL_CC) $(KERNEL_CC_FLAGS) -c $< -o $@
+
+$(BUILD_DIR)/idt_asm.o: $(KERNEL_DIR)/idt_asm.S | $(BUILD_DIR)
+	@echo "[AS] Assembling IDT functions..."
+	$(AS) $(KERNEL_AS_FLAGS) $< -o $@
+
+$(BUILD_DIR)/timer.o: $(KERNEL_DIR)/timer.c $(KERNEL_DIR)/timer.h $(KERNEL_DIR)/types.h $(KERNEL_DIR)/console.h $(KERNEL_DIR)/io.h | $(BUILD_DIR)
+	@echo "[CC] Compiling timer..."
+	$(KERNEL_CC) $(KERNEL_CC_FLAGS) -c $< -o $@
+
+$(BUILD_DIR)/keyboard.o: $(KERNEL_DIR)/keyboard.c $(KERNEL_DIR)/keyboard.h $(KERNEL_DIR)/types.h $(KERNEL_DIR)/console.h $(KERNEL_DIR)/io.h | $(BUILD_DIR)
+	@echo "[CC] Compiling keyboard..."
+	$(KERNEL_CC) $(KERNEL_CC_FLAGS) -c $< -o $@
+
+$(BUILD_DIR)/pmm.o: $(KERNEL_DIR)/pmm.c $(KERNEL_DIR)/pmm.h $(KERNEL_DIR)/types.h $(KERNEL_DIR)/console.h | $(BUILD_DIR)
+	@echo "[CC] Compiling PMM..."
+	$(KERNEL_CC) $(KERNEL_CC_FLAGS) -c $< -o $@
+
+$(BUILD_DIR)/vmm.o: $(KERNEL_DIR)/vmm.c $(KERNEL_DIR)/vmm.h $(KERNEL_DIR)/types.h $(KERNEL_DIR)/console.h | $(BUILD_DIR)
+	@echo "[CC] Compiling VMM..."
+	$(KERNEL_CC) $(KERNEL_CC_FLAGS) -c $< -o $@
+
+$(BUILD_DIR)/vmm_asm.o: $(KERNEL_DIR)/vmm_asm.S | $(BUILD_DIR)
+	@echo "[AS] Assembling VMM functions..."
+	$(AS) $(KERNEL_AS_FLAGS) $< -o $@
+
+$(BUILD_DIR)/kheap.o: $(KERNEL_DIR)/kheap.c $(KERNEL_DIR)/kheap.h $(KERNEL_DIR)/types.h $(KERNEL_DIR)/console.h | $(BUILD_DIR)
+	@echo "[CC] Compiling kernel heap..."
+	$(KERNEL_CC) $(KERNEL_CC_FLAGS) -c $< -o $@
+
+$(BUILD_DIR)/process.o: $(KERNEL_DIR)/process.c $(KERNEL_DIR)/process.h $(KERNEL_DIR)/types.h $(KERNEL_DIR)/console.h | $(BUILD_DIR)
+	@echo "[CC] Compiling process management..."
+	$(KERNEL_CC) $(KERNEL_CC_FLAGS) -c $< -o $@
+
+$(BUILD_DIR)/scheduler.o: $(KERNEL_DIR)/scheduler.c $(KERNEL_DIR)/scheduler.h $(KERNEL_DIR)/types.h $(KERNEL_DIR)/console.h | $(BUILD_DIR)
+	@echo "[CC] Compiling scheduler..."
+	$(KERNEL_CC) $(KERNEL_CC_FLAGS) -c $< -o $@
+
+$(BUILD_DIR)/switch.o: $(KERNEL_DIR)/switch.S | $(BUILD_DIR)
+	@echo "[AS] Assembling context switch..."
+	$(AS) $(KERNEL_AS_FLAGS) $< -o $@
+
+$(BUILD_DIR)/tss.o: $(KERNEL_DIR)/tss.c $(KERNEL_DIR)/tss.h $(KERNEL_DIR)/types.h $(KERNEL_DIR)/console.h $(KERNEL_DIR)/gdt.h | $(BUILD_DIR)
+	@echo "[CC] Compiling TSS..."
+	$(KERNEL_CC) $(KERNEL_CC_FLAGS) -c $< -o $@
+
+$(BUILD_DIR)/syscall.o: $(KERNEL_DIR)/syscall.c $(KERNEL_DIR)/syscall.h $(KERNEL_DIR)/types.h $(KERNEL_DIR)/console.h | $(BUILD_DIR)
+	@echo "[CC] Compiling syscalls..."
+	$(KERNEL_CC) $(KERNEL_CC_FLAGS) -c $< -o $@
+
+$(BUILD_DIR)/syscall_asm.o: $(KERNEL_DIR)/syscall_asm.S | $(BUILD_DIR)
+	@echo "[AS] Assembling syscall handler..."
+	$(AS) $(KERNEL_AS_FLAGS) $< -o $@
+
+$(BUILD_DIR)/usermode.o: $(KERNEL_DIR)/usermode.c $(KERNEL_DIR)/usermode.h $(KERNEL_DIR)/types.h $(KERNEL_DIR)/console.h | $(BUILD_DIR)
+	@echo "[CC] Compiling user mode support..."
+	$(KERNEL_CC) $(KERNEL_CC_FLAGS) -c $< -o $@
+
+$(BUILD_DIR)/usermode_test.o: $(KERNEL_DIR)/usermode_test.c $(KERNEL_DIR)/types.h $(KERNEL_DIR)/syscall.h | $(BUILD_DIR)
+	@echo "[CC] Compiling user mode test..."
 	$(KERNEL_CC) $(KERNEL_CC_FLAGS) -c $< -o $@
 
 # Create kernel linker script
