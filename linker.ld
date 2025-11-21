@@ -4,27 +4,28 @@ ENTRY(_start)
 
 SECTIONS
 {
-    /* Kernel loaded at 0x10000, but link addresses start at 0 */
-    /* This way objcopy won't add padding to the binary */
-    . = 0;
+    /* Kernel loaded at 0x10000 physical, but binary starts at 0 */
+    /* VMA (Virtual/Link Address) = 0x10000 - where code expects to run */
+    /* LMA (Load Address) = 0 - where it appears in binary file */
+    . = 0x10000;
 
-    /* Code section - will be loaded at 0x10000 by bootloader */
-    .text 0x10000 : AT(0) {
+    /* Code section */
+    .text : AT(ADDR(.text) - 0x10000) {
         *(.text)
     }
 
     /* Read-only data (string literals) - immediately after code */
-    .rodata : {
+    .rodata : AT(ADDR(.rodata) - 0x10000) {
         *(.rodata*)
     }
 
     /* Initialized data */
-    .data : {
+    .data : AT(ADDR(.data) - 0x10000) {
         *(.data)
     }
 
     /* Uninitialized data */
-    .bss : {
+    .bss : AT(ADDR(.bss) - 0x10000) {
         *(.bss)
     }
 
