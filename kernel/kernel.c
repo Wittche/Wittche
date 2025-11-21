@@ -292,6 +292,10 @@ void test_usermode(void) {
  * Called from kernel_entry.asm after bootloader hands control
  */
 void kernel_main(void) {
+    // TEST: Write directly to VGA to see if we reach kernel_main
+    volatile unsigned short *vga = (volatile unsigned short *)0xB8000;
+    vga[0] = 0x0F4B; // 'K' in white on black (0x0F = white, 0x4B = 'K')
+
     // Initialize screen/VGA driver first
     screen_init();
 
