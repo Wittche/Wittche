@@ -294,31 +294,43 @@ void test_usermode(void) {
 void kernel_main(void) {
     // TEST: Write directly to VGA to see if we reach kernel_main
     volatile unsigned short *vga = (volatile unsigned short *)0xB8000;
-    vga[0] = 0x0F4B; // 'K' in white on black (0x0F = white, 0x4B = 'K')
+    vga[0] = 0x0F4B; // 'K' - kernel_main reached
 
     // Initialize screen/VGA driver first
     screen_init();
+    vga[1] = 0x0F53; // 'S' - screen_init done
 
     // Display boot messages
     screen_write_color("[BOOT] ", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
     screen_write("Wittche OS kernel loaded at ");
     screen_write_hex(0x10000);
     screen_write("\n");
+    vga[2] = 0x0F42; // 'B' - boot message done
 
     // Initialize Global Descriptor Table (GDT)
     gdt_init();
+    vga[3] = 0x0F47; // 'G' - gdt_init done
 
     // Initialize Interrupt Descriptor Table
     idt_init();
+    vga[4] = 0x0F49; // 'I' - idt_init done
 
     // Initialize system calls (INT 0x80)
     syscall_init();
+    vga[5] = 0x0F59; // 'Y' - syscall_init done
 
     // Initialize memory management
     pmm_init();     // Physical memory manager
+    vga[6] = 0x0F50; // 'P' - pmm_init done
+
     heap_init();    // Kernel heap
+    vga[7] = 0x0F48; // 'H' - heap_init done
+
     paging_init();  // Virtual memory (enables paging)
+    vga[8] = 0x0F56; // 'V' - paging_init done
+
     ramdisk_init(); // RAM disk (virtual disk in memory) - after paging!
+    vga[9] = 0x0F52; // 'R' - ramdisk_init done
 
     // Initialize file system (format on first boot, then mount)
     screen_write_color("[KERNEL] ", MAKE_COLOR(COLOR_CYAN, COLOR_BLACK));
@@ -336,6 +348,7 @@ void kernel_main(void) {
     }
 
     fs_init();  // Mount file system
+    vga[10] = 0x0F46; // 'F' - fs_init done
 
     if (fs_is_initialized()) {
         screen_write_color("[KERNEL] ", MAKE_COLOR(COLOR_GREEN, COLOR_BLACK));
@@ -347,12 +360,15 @@ void kernel_main(void) {
 
     // Initialize process management (multitasking)
     process_init();
+    vga[11] = 0x0F4F; // 'O' - process_init done
 
     // Initialize timer (PIT)
     timer_init();
+    vga[12] = 0x0F54; // 'T' - timer_init done
 
     // Initialize keyboard driver
     keyboard_init();
+    vga[13] = 0x0F4C; // 'L' - keyboard_init done
 
     // Display welcome banner
     shell_display_banner();
