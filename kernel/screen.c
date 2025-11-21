@@ -175,14 +175,26 @@ void screen_write(const char *str) {
 void screen_write_color(const char *str, uint8_t color) {
     if (!str) return;
 
-    uint8_t old_color = current_color;
-    current_color = color;
+    // TEST: Write directly to VGA to bypass potential paging issues
+    volatile uint16_t *vga = (volatile uint16_t *)0xB8000;
+    int pos = cursor_row * SCREEN_WIDTH + cursor_col;
 
     for (int i = 0; str[i] != '\0'; i++) {
-        screen_putchar_internal(str[i]);
-    }
+        if (str[i] == '\n') {
+            cursor_col = 0;
+            cursor_row++;
+        } else {
+            vga[pos] = (color << 8) | str[i];
+            cursor_col++;
+            pos = cursor_row * SCREEN_WIDTH + cursor_col;
+        }
 
-    current_color = old_color;
+        if (cursor_col >= SCREEN_WIDTH) {
+            cursor_col = 0;
+            cursor_row++;
+            pos = cursor_row * SCREEN_WIDTH + cursor_col;
+        }
+    }
 
     // Update cursor only once after writing entire string
     screen_update_cursor();
