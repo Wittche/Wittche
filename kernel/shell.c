@@ -1838,23 +1838,16 @@ static int handle_tab_completion(char *buffer, int length, int max_length) {
  * Get line with tab completion support
  */
 static void shell_get_line(char *buffer, int max_length) {
-    // TEST: Mark entry
-    volatile unsigned short *vga = (volatile unsigned short *)0xB8000;
-    vga[24] = 0x0F4A; // 'J' - shell_get_line entered
-
     int length = 0;
     int cursor_pos = 0;
     int start_col = screen_get_cursor_col();
     int start_row = screen_get_cursor_row();
 
-    vga[25] = 0x0F41; // 'A' - starting main loop
     while (1) {
-        vga[26] = 0x0F5A; // 'Z' - waiting for keyboard
         while (!keyboard_has_input()) {
             __asm__ __volatile__("hlt");
         }
 
-        vga[27] = 0x0F58; // 'X' - got keyboard input
         char c = keyboard_getchar();
 
         if (c == '\n') {
