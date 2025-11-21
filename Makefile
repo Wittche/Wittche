@@ -85,9 +85,9 @@ $(BUILD_DIR)/usermode_asm.o: $(KERNEL_DIR)/usermode.asm | $(BUILD_DIR)
 $(BUILD_DIR)/kernel.elf: $(OBJS)
 	$(LD) $(LD_FLAGS) $^ -o $@
 
-# Convert ELF to flat binary (only .text .rodata .data .bss)
+# Convert ELF to flat binary (let objcopy take all loadable sections)
 $(KERNEL_BIN): $(BUILD_DIR)/kernel.elf
-	objcopy -O binary -j .text -j .rodata -j .data -j .bss $< $@
+	objcopy -O binary $< $@
 
 # Create OS image
 $(OS_IMAGE): $(BOOTLOADER) $(KERNEL_BIN)
