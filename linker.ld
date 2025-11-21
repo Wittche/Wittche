@@ -4,11 +4,12 @@ ENTRY(_start)
 
 SECTIONS
 {
-    /* Kernel starts at 1MB (0x10000) */
-    . = 0x10000;
+    /* Kernel loaded at 0x10000, but link addresses start at 0 */
+    /* This way objcopy won't add padding to the binary */
+    . = 0;
 
-    /* Code section */
-    .text : {
+    /* Code section - will be loaded at 0x10000 by bootloader */
+    .text 0x10000 : AT(0) {
         *(.text)
     }
 
