@@ -1,111 +1,218 @@
-# Makefile for Wittche OS
+# AuroraOS Makefile
+# Build system for bootloader and kernel
 
-# Tools
-ASM = nasm
-CC = gcc
+# Toolchain
+BOOT_CC = clang          # Use Clang for UEFI bootloader (supports -target)
+KERNEL_CC = gcc          # Use GCC for kernel
+AS = as                  # Use GNU Assembler (comes with GCC)
 LD = ld
-
-# Flags
-ASM_FLAGS = -f elf32
-CC_FLAGS = -m32 -ffreestanding -nostdlib -nostdinc -fno-builtin -fno-stack-protector -nostartfiles -nodefaultlibs -fno-pic -fno-pie -Wall -Wextra -c
-LD_FLAGS = -m elf_i386 -T linker.ld -no-pie
+OBJCOPY = objcopy
 
 # Directories
 BUILD_DIR = build
-BOOT_DIR = boot
+BOOT_DIR = bootloader/efi
 KERNEL_DIR = kernel
+ISO_DIR = $(BUILD_DIR)/iso
 
-# Object files
-OBJS = $(BUILD_DIR)/kernel_entry.o \
-       $(BUILD_DIR)/kernel.o \
-       $(BUILD_DIR)/screen.o \
-       $(BUILD_DIR)/string.o \
-       $(BUILD_DIR)/gdt.o \
-       $(BUILD_DIR)/gdt_asm.o \
-       $(BUILD_DIR)/idt.o \
-       $(BUILD_DIR)/isr.o \
-       $(BUILD_DIR)/interrupt.o \
-       $(BUILD_DIR)/syscall.o \
-       $(BUILD_DIR)/syscall_asm.o \
-       $(BUILD_DIR)/userlib.o \
-       $(BUILD_DIR)/pmm.o \
-       $(BUILD_DIR)/heap.o \
-       $(BUILD_DIR)/paging.o \
-       $(BUILD_DIR)/process.o \
-       $(BUILD_DIR)/switch.o \
-       $(BUILD_DIR)/usermode_asm.o \
-       $(BUILD_DIR)/keyboard.o \
-       $(BUILD_DIR)/timer.o \
-       $(BUILD_DIR)/kprintf.o \
-       $(BUILD_DIR)/shell.o \
-       $(BUILD_DIR)/ramdisk.o \
-       $(BUILD_DIR)/fs.o
+# Target architecture
+ARCH = x86_64
+
+# Compiler flags for UEFI bootloader
+EFI_CC_FLAGS = -target $(ARCH)-unknown-windows \
+               -ffreestanding \
+               -fno-stack-protector \
+               -fno-stack-check \
+               -fshort-wchar \
+               -mno-red-zone \
+               -std=c11 \
+               -I$(BOOT_DIR) \
+               -Wall -Wextra
+
+# Linker flags for UEFI bootloader
+EFI_LD_FLAGS = -target $(ARCH)-unknown-windows \
+               -nostdlib \
+               -Wl,-entry:efi_main \
+               -Wl,-subsystem:efi_application \
+               -fuse-ld=lld
+
+# Compiler flags for kernel
+KERNEL_CC_FLAGS = -ffreestanding \
+                  -nostdlib \
+                  -nostdinc \
+                  -fno-builtin \
+                  -fno-stack-protector \
+                  -fno-pic \
+                  -fno-pie \
+                  -mno-red-zone \
+                  -mcmodel=kernel \
+                  -m64 \
+                  -std=c11 \
+                  -I$(KERNEL_DIR) \
+                  -Wall -Wextra -Werror \
+                  -O2
+
+# Assembler flags for kernel (GNU as)
+KERNEL_AS_FLAGS = --64
+
+# Linker flags for kernel
+KERNEL_LD_FLAGS = -n \
+                  -T $(KERNEL_DIR)/linker.ld \
+                  -nostdlib
 
 # Output files
-BOOTLOADER = $(BUILD_DIR)/boot.bin
+BOOTLOADER_EFI = $(BUILD_DIR)/BOOTX64.EFI
+KERNEL_ELF = $(BUILD_DIR)/kernel.elf
 KERNEL_BIN = $(BUILD_DIR)/kernel.bin
-OS_IMAGE = $(BUILD_DIR)/wittche.img
+ISO_IMAGE = $(BUILD_DIR)/auroraos.iso
+
+# Object files
+BOOT_OBJS = $(BUILD_DIR)/boot.o
+KERNEL_OBJS = $(BUILD_DIR)/multiboot.o \
+              $(BUILD_DIR)/entry.o \
+              $(BUILD_DIR)/main.o \
+              $(BUILD_DIR)/console.o
 
 # Default target
-all: $(OS_IMAGE)
+.PHONY: all
+all: $(BOOTLOADER_EFI) $(KERNEL_BIN)
+	@echo "Build complete!"
+	@echo "Bootloader: $(BOOTLOADER_EFI)"
+	@echo "Kernel:     $(KERNEL_BIN)"
+
+# Build only kernel (skip bootloader)
+.PHONY: kernel
+kernel: $(KERNEL_BIN)
+	@echo "Kernel build complete!"
+	@echo "Kernel: $(KERNEL_BIN)"
 
 # Create build directory
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
-# Build bootloader
-$(BOOTLOADER): $(BOOT_DIR)/boot.asm | $(BUILD_DIR)
-	$(ASM) -f bin $< -o $@
+# Build UEFI bootloader
+$(BOOTLOADER_EFI): $(BOOT_OBJS) | $(BUILD_DIR)
+	@echo "[LD] Linking UEFI bootloader..."
+	$(BOOT_CC) $(EFI_LD_FLAGS) -o $@ $^
 
-# Build kernel entry (special case for entry point)
-$(BUILD_DIR)/kernel_entry.o: $(KERNEL_DIR)/kernel_entry.asm | $(BUILD_DIR)
-	$(ASM) $(ASM_FLAGS) $< -o $@
+$(BUILD_DIR)/boot.o: $(BOOT_DIR)/boot_simple.c $(BOOT_DIR)/efi.h | $(BUILD_DIR)
+	@echo "[CC] Compiling bootloader (simplified)..."
+	$(BOOT_CC) $(EFI_CC_FLAGS) -c $< -o $@
 
-# Build C object files
-$(BUILD_DIR)/%.o: $(KERNEL_DIR)/%.c | $(BUILD_DIR)
-	$(CC) $(CC_FLAGS) $< -o $@
+# Build kernel
+$(KERNEL_BIN): $(KERNEL_ELF)
+	@echo "[OBJCOPY] Creating kernel binary..."
+	$(OBJCOPY) -O binary $< $@
 
-# Build ASM object files
-$(BUILD_DIR)/%.o: $(KERNEL_DIR)/%.asm | $(BUILD_DIR)
-	$(ASM) $(ASM_FLAGS) $< -o $@
+$(KERNEL_ELF): $(KERNEL_OBJS) $(KERNEL_DIR)/linker.ld
+	@echo "[LD] Linking kernel..."
+	$(LD) $(KERNEL_LD_FLAGS) -o $@ $(KERNEL_OBJS)
 
-# Special rule for gdt.asm -> gdt_asm.o
-$(BUILD_DIR)/gdt_asm.o: $(KERNEL_DIR)/gdt.asm | $(BUILD_DIR)
-	$(ASM) $(ASM_FLAGS) $< -o $@
+$(BUILD_DIR)/multiboot.o: $(KERNEL_DIR)/multiboot.S | $(BUILD_DIR)
+	@echo "[AS] Assembling multiboot header..."
+	$(AS) $(KERNEL_AS_FLAGS) $< -o $@
 
-# Special rule for syscall.asm -> syscall_asm.o
-$(BUILD_DIR)/syscall_asm.o: $(KERNEL_DIR)/syscall.asm | $(BUILD_DIR)
-	$(ASM) $(ASM_FLAGS) $< -o $@
+$(BUILD_DIR)/entry.o: $(KERNEL_DIR)/entry.S | $(BUILD_DIR)
+	@echo "[AS] Assembling kernel entry..."
+	$(AS) $(KERNEL_AS_FLAGS) $< -o $@
 
-# Special rule for usermode.asm -> usermode_asm.o
-$(BUILD_DIR)/usermode_asm.o: $(KERNEL_DIR)/usermode.asm | $(BUILD_DIR)
-	$(ASM) $(ASM_FLAGS) $< -o $@
+$(BUILD_DIR)/main.o: $(KERNEL_DIR)/main.c $(KERNEL_DIR)/types.h $(KERNEL_DIR)/boot.h $(KERNEL_DIR)/console.h | $(BUILD_DIR)
+	@echo "[CC] Compiling kernel main..."
+	$(KERNEL_CC) $(KERNEL_CC_FLAGS) -c $< -o $@
 
-# Link kernel to ELF first
-$(BUILD_DIR)/kernel.elf: $(OBJS)
-	$(LD) $(LD_FLAGS) $^ -o $@
+$(BUILD_DIR)/console.o: $(KERNEL_DIR)/console.c $(KERNEL_DIR)/console.h $(KERNEL_DIR)/types.h | $(BUILD_DIR)
+	@echo "[CC] Compiling console..."
+	$(KERNEL_CC) $(KERNEL_CC_FLAGS) -c $< -o $@
 
-# Convert ELF to flat binary (only .text .rodata .data .bss)
-$(KERNEL_BIN): $(BUILD_DIR)/kernel.elf
-	objcopy -O binary -j .text -j .rodata -j .data -j .bss $< $@
+# Create kernel linker script
+$(KERNEL_DIR)/linker.ld:
+	@echo "Creating kernel linker script..."
+	@echo "OUTPUT_FORMAT(elf64-x86-64)" > $@
+	@echo "ENTRY(_start)" >> $@
+	@echo "" >> $@
+	@echo "SECTIONS" >> $@
+	@echo "{" >> $@
+	@echo "    . = 0x100000;" >> $@
+	@echo "" >> $@
+	@echo "    .text : {" >> $@
+	@echo "        *(.multiboot)" >> $@
+	@echo "        *(.text)" >> $@
+	@echo "    }" >> $@
+	@echo "" >> $@
+	@echo "    .rodata : {" >> $@
+	@echo "        *(.rodata*)" >> $@
+	@echo "    }" >> $@
+	@echo "" >> $@
+	@echo "    .data : {" >> $@
+	@echo "        *(.data)" >> $@
+	@echo "    }" >> $@
+	@echo "" >> $@
+	@echo "    .bss : {" >> $@
+	@echo "        *(.bss)" >> $@
+	@echo "        *(COMMON)" >> $@
+	@echo "    }" >> $@
+	@echo "" >> $@
+	@echo "    /DISCARD/ : {" >> $@
+	@echo "        *(.eh_frame)" >> $@
+	@echo "        *(.comment)" >> $@
+	@echo "    }" >> $@
+	@echo "}" >> $@
 
-# Create OS image
-$(OS_IMAGE): $(BOOTLOADER) $(KERNEL_BIN)
-	cat $(BOOTLOADER) $(KERNEL_BIN) > $@
-	# Pad to 1.44MB (floppy disk size)
-	truncate -s 1474560 $@
+# Create bootable ISO (future)
+.PHONY: iso
+iso: $(BOOTLOADER_EFI) $(KERNEL_BIN)
+	@echo "ISO creation not yet implemented"
 
-# Run with QEMU
-run: $(OS_IMAGE)
-	qemu-system-i386 -drive format=raw,file=$(OS_IMAGE)
+# Create ESP (EFI System Partition) image
+.PHONY: esp
+esp: $(BOOTLOADER_EFI) $(KERNEL_BIN)
+	@echo "Creating ESP image..."
+	@bash scripts/create_esp.sh
 
-# Run with QEMU in debug mode
-debug: $(OS_IMAGE)
-	qemu-system-i386 -drive format=raw,file=$(OS_IMAGE) -s -S
+# Run with QEMU (UEFI)
+.PHONY: run
+run: esp
+	@echo "Running AuroraOS in QEMU (UEFI mode)..."
+	@echo "Note: Requires OVMF UEFI firmware"
+	qemu-system-x86_64 \
+		-bios /usr/share/ovmf/OVMF.fd \
+		-drive format=raw,file=$(BUILD_DIR)/esp.img \
+		-m 256M \
+		-serial stdio
 
-# Clean build files
+# Run with QEMU (use ELF format - simpler for testing)
+.PHONY: run-bios
+run-bios: $(KERNEL_ELF)
+	@echo "Running kernel in QEMU (direct ELF load for testing)..."
+	@echo "Note: This is a basic test - kernel expects boot_info but gets multiboot info"
+	qemu-system-x86_64 \
+		-kernel $(KERNEL_ELF) \
+		-m 256M \
+		-serial stdio
+
+# Clean build artifacts
+.PHONY: clean
 clean:
+	@echo "Cleaning build directory..."
 	rm -rf $(BUILD_DIR)
+	rm -f $(KERNEL_DIR)/linker.ld
 
-# Phony targets
-.PHONY: all run debug clean
+# Help
+.PHONY: help
+help:
+	@echo "AuroraOS Build System"
+	@echo ""
+	@echo "Targets:"
+	@echo "  all        - Build bootloader and kernel (default)"
+	@echo "  kernel     - Build kernel only"
+	@echo "  esp        - Create ESP (EFI System Partition) image"
+	@echo "  clean      - Remove build artifacts"
+	@echo "  run        - Run in QEMU with UEFI (auto-creates ESP)"
+	@echo "  run-bios   - Run in QEMU with legacy BIOS (Multiboot test)"
+	@echo "  iso        - Create bootable ISO (not implemented)"
+	@echo "  help       - Show this help"
+	@echo ""
+	@echo "Requirements:"
+	@echo "  - GCC/Clang with x86_64 target"
+	@echo "  - NASM assembler"
+	@echo "  - QEMU for testing"
+	@echo "  - OVMF UEFI firmware for UEFI testing"

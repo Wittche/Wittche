@@ -1,543 +1,167 @@
-# Wittche Operating System
+# AuroraOS
 
-<div align="center">
+A modern, macOS-inspired operating system with hybrid kernel architecture.
 
-![Version](https://img.shields.io/badge/version-0.9.0-blue.svg)
-![License](https://img.shields.io/badge/license-MIT-green.svg)
-![Platform](https://img.shields.io/badge/platform-x86-orange.svg)
-![Language](https://img.shields.io/badge/language-C%20%7C%20Assembly-yellow.svg)
+## Architecture
 
-**An educational operating system with multitasking built from scratch for learning OS development**
+- **Hybrid Kernel**: Combines Mach-like microkernel with BSD components
+- **UEFI Bootloader**: Modern EFI boot system
+- **GUI Framework**: Quartz/Aqua-inspired compositor and window manager
+- **POSIX Compatible**: BSD layer provides POSIX API compatibility
 
-[Features](#features) • [Getting Started](#getting-started) • [Release Notes](#-release-notes) • [Contributing](#contributing) • [Roadmap](#roadmap) • [Documentation](#documentation)
+## Project Structure
 
-</div>
-
----
-
-## 🎯 About
-
-Wittche OS is an educational operating system designed to help developers learn operating system concepts from the ground up. Written in C and Assembly, it features a clean, well-documented codebase perfect for understanding how operating systems work.
-
-This project was developed by artificial intelligence without knowing any code.
-
-**Perfect for:**
-- 🎓 Students learning OS development
-- 💻 Developers wanting to understand low-level programming
-- 🔬 Anyone interested in how computers boot and run
-- 👥 Contributors looking for an educational open-source project
-
-## ✨ Features
-
-### 🚀 Core Features
-- ✅ **Custom Bootloader**: BIOS boot, GDT setup, protected mode transition
-- ✅ **32-bit Protected Mode Kernel**: Written entirely in C and Assembly
-- ✅ **Interrupt Management**: Full IDT with ISR/IRQ support
-- ✅ **Hardware Drivers**: PS/2 keyboard, VGA text mode, PIT timer
-
-### 🎨 Display
-- ✅ **VGA Text Mode Driver**: 80x25 colorful text output
-- ✅ **Hardware Cursor**: VGA hardware cursor support
-- ✅ **Proper Scrolling**: Automatic screen scrolling
-- ✅ **16 Color Support**: Full VGA color palette
-
-### ⌨️ Input
-- ✅ **PS/2 Keyboard Driver**: Hardware interrupt-based
-- ✅ **Scancode to ASCII**: US QWERTY layout
-- ✅ **Special Keys**: Shift, Caps Lock, Backspace, Enter support
-- ✅ **Input Buffering**: Circular queue keyboard buffer
-
-### 💾 Memory Management (v0.6)
-- ✅ **Physical Memory Manager (PMM)**: Bitmap-based page allocator (4096 pages, 16MB)
-- ✅ **Kernel Heap**: Dynamic memory allocation (kmalloc/kfree, 4MB heap)
-- ✅ **Paging**: Virtual memory with identity mapping
-- ✅ **Memory Commands**: mem, meminfo, memtest
-
-### 🔄 Process Management (v0.7-v0.8)
-- ✅ **Process Control Block (PCB)**: Full process state tracking
-- ✅ **Preemptive Multitasking**: Priority-based scheduler with 10ms time slices
-- ✅ **Priority Scheduling**: 256 priority levels (0-255, higher = more CPU)
-- ✅ **Sleep/Wake System**: Process sleep with ±1ms precision, zero CPU usage
-- ✅ **Context Switching**: Assembly-level full register save/restore
-- ✅ **Process Commands**: ps, testproc, sleeptest, nice, kill
-- ✅ **64 Concurrent Processes**: Maximum process support
-- ✅ **Complete Lifecycle Control**: Create, monitor, modify priority, sleep, terminate
-
-### 💾 Storage (v0.8.1)
-- ✅ **RAM Disk**: 1MB virtual disk in memory (2048 blocks × 512 bytes)
-- ✅ **Block I/O**: Read/write operations on 512-byte blocks
-- ✅ **RAM Disk Commands**: rdinfo, rdformat, ramdisk
-- ✅ **Format Support**: Clear/initialize disk
-
-### 📁 File System (v0.9.0)
-- ✅ **WitFS (Wittche File System)**: Complete inode-based file system
-- ✅ **File Operations**: Create, read, write, delete files
-- ✅ **Directory Support**: Create and list directories
-- ✅ **Inode Table**: 512 inodes with metadata tracking
-- ✅ **Bitmap Allocation**: Efficient inode and data block management
-- ✅ **File Descriptors**: Up to 16 open files simultaneously
-- ✅ **Block Pointers**: 10 direct blocks per inode (max 5KB per file)
-- ✅ **File System Commands**: fsformat, ls, touch, cat, rm, mkdir, write
-- ✅ **Persistent Storage**: File data stored on RAM disk (volatile)
-- ✅ **Magic Number**: 0x57495443 ('WITC')
-
-### 💻 Shell
-- ✅ **Interactive Shell**: Full-featured command-line interface
-- ✅ **Command Parser**: Argument parsing and tokenization
-- ✅ **Command History**: Last 10 commands tracked
-- ✅ **Tab Completion**: Auto-complete commands with Tab key
-- ✅ **Arrow Key Support**: Navigate and edit command line
-- ✅ **Built-in Commands**: help, clear/cls, about, ver, mem, meminfo, memtest, ps, testproc, sleeptest, nice, kill, echo, color, uptime, history, banner, rdinfo, rdformat, ramdisk, fsformat, ls, touch, cat, rm, mkdir, write
-- ✅ **Colorful Output**: Colored command output
-- ✅ **Memory Inspector**: View memory layout and statistics
-
-### ⏱️ Timing
-- ✅ **PIT (Programmable Interval Timer)**: 1000 Hz timer
-- ✅ **System Uptime**: Accurate uptime tracking
-- ✅ **Time Formatting**: HH:MM:SS display
-
-### 📚 Libraries
-- ✅ **String Library**: strlen, strcmp, strcpy, strcat, split, trim, etc.
-- ✅ **Memory Functions**: memset, memcpy, memcmp
-- ✅ **Conversion Functions**: atoi, itoa (various bases)
-- ✅ **Printf-style Output**: kprintf() with format specifiers (%d, %x, %s, %p, etc.)
-- ✅ **Modular Design**: Clean, separated module structure
-
-## 🚀 Getting Started
-
-### Prerequisites
-
-```bash
-# Ubuntu/Debian
-sudo apt-get install nasm gcc-multilib make qemu-system-x86
-
-# Fedora/RHEL
-sudo dnf install nasm gcc make qemu-system-x86
-
-# Arch Linux
-sudo pacman -S nasm gcc make qemu
+```
+AuroraOS/
+├── bootloader/efi/       # UEFI bootloader (boot.efi)
+├── kernel/               # Kernel source
+│   ├── mach/            # Microkernel (IPC, VM, threads)
+│   ├── bsd/             # BSD layer (VFS, POSIX, network)
+│   ├── libkern/         # Kernel libraries
+│   └── osfmk/           # OS fundamentals
+├── drivers/              # Device drivers
+├── userspace/            # User-space libraries and daemons
+├── gui/                  # GUI framework and compositor
+├── docs/                 # Documentation
+└── tools/                # Build tools
 ```
 
-### Building
+## Development Status
 
+**Phase 1: Bootloader + Minimal Kernel** (In Progress)
+- [x] Project structure
+- [x] UEFI bootloader implementation (simplified)
+- [x] Kernel stub with NULL safety
+- [x] Basic console output (VGA text mode)
+- [x] Build system (Makefile)
+- [x] ESP image creation
+- [ ] Interrupt handling
+- [ ] Memory management (PMM/VMM)
+
+## Build Requirements
+
+### Required
+- **GCC** (for kernel compilation)
+- **Clang** (for UEFI bootloader with `-target` support)
+- **LLD** (LLVM linker, comes with Clang)
+- **GNU Binutils** (as, ld, objcopy)
+- **GNU Make**
+
+### Optional (for testing)
+- **QEMU** with x86_64 support
+- **OVMF** UEFI firmware (`/usr/share/ovmf/OVMF.fd`)
+
+### Installation (Ubuntu/Debian)
 ```bash
-# Clone the repository
-git clone https://github.com/YOUR-USERNAME/Wittche.git
-cd Wittche
+sudo apt update
+sudo apt install build-essential clang lld qemu-system-x86 ovmf
+```
 
-# Build the OS
-make
+## Building
 
-# Run in QEMU
+### Build Everything
+```bash
+make all
+```
+
+This builds:
+- `build/BOOTX64.EFI` - UEFI bootloader (5KB)
+- `build/kernel.bin` - Kernel binary (3KB)
+- `build/kernel.elf` - Kernel with debug symbols
+
+### Build Kernel Only
+```bash
+make kernel
+```
+
+### Create ESP Image
+```bash
+make esp
+```
+
+Creates `build/esp.img` - A bootable FAT32 image with UEFI directory structure.
+
+### Run in QEMU (UEFI)
+```bash
 make run
+```
 
-# Clean build files
+This automatically:
+1. Builds bootloader and kernel
+2. Creates ESP image
+3. Launches QEMU with OVMF firmware
+
+**Note:** Requires OVMF firmware installed at `/usr/share/ovmf/OVMF.fd`
+
+### Clean Build
+```bash
 make clean
 ```
 
-### Quick Start
+## Testing
 
-```bash
-# Build and run in one command
-make && make run
-```
+See [docs/TESTING.md](docs/TESTING.md) for detailed testing instructions.
 
-You should see the Wittche OS boot screen and shell prompt!
-
-## 📖 Documentation
-
-### Release Notes
-- **[Release Notes v0.9.0](docs/RELEASE_v0.9.0.md)** - File System Implementation
-- **[Release Notes v0.8.1](docs/RELEASE_v0.8.1.md)** - RAM Disk & Bootloader Fix
-- **[Release Notes v0.8.0](.github/RELEASE_v0.8.0.md)** - Advanced Process Features
-- **[Release Notes v0.7.0](.github/RELEASE_v0.7.0.md)** - Process Management
-- **[Release Notes v0.6.0](.github/RELEASE_v0.6.0.md)** - Memory Management
-- **[Release Notes v0.5.0](.github/RELEASE_v0.5.0.md)** - Enhanced UX
-
-### Technical Documentation
-- **[Bootloader String Literal Fix](docs/BOOTLOADER_STRING_LITERAL_FIX.md)** - Detailed debugging case study
-
-### Guides
-- **[Contributing Guide](CONTRIBUTING.md)** - How to contribute to the project
-- **[Code of Conduct](CODE_OF_CONDUCT.md)** - Community guidelines
-- **[Roadmap](ROADMAP.md)** - Future plans and features
-- **[Authors](AUTHORS)** - Contributors list
-
-## 📋 Release Notes
-
-### Latest: v0.9.0 - "File System" (November 20, 2025)
-📁 **Complete File System Implementation (WitFS)!**
-
-**Key Features:**
-- WitFS (Wittche File System): Inode-based file system on RAM disk
-- File operations: Create, read, write, delete files
-- Directory support: Create and list directories
-- 512 inodes, 1981 data blocks (max 5KB per file)
-- New commands: `fsformat`, `ls`, `touch`, `cat`, `rm`, `mkdir`, `write`
-- Bitmap allocation for efficient space management
-- Up to 16 simultaneously open files
-
-**Try it:**
-```bash
-wittche> fsformat          # Format file system
-wittche> write hello.txt Hello, World!
-wittche> ls                # List files
-wittche> cat hello.txt     # Display contents
-```
-
-**[Read Full Release Notes →](docs/RELEASE_v0.9.0.md)**
-
-### Previous Releases
-
-**v0.8.1 - "RAM Disk & Bootloader Fix"** (November 20, 2024)
-💾 **RAM Disk Implementation + Critical Bootloader Fix!**
-
-- RAM Disk: 1MB virtual disk in memory (2048 blocks × 512 bytes)
-- New commands: `rdinfo`, `rdformat`, `ramdisk`
-- Fixed bootloader sector loading (50KB → 64KB)
-- [Read Full Technical Analysis →](docs/BOOTLOADER_STRING_LITERAL_FIX.md)
-
-**v0.8.0 - "Advanced Process Features"** (November 19, 2024)
-🎯 **Priority Scheduling, Sleep/Wake, and Process Control!**
-
-**Key Features:**
-- Priority-based scheduling with 256 priority levels (0-255)
-- Sleep/wake system with ±1ms precision and zero CPU usage
-- Complete process control: nice (priority), kill (terminate)
-- New commands: `nice`, `kill`, `sleeptest`
-- Enhanced process management with full lifecycle control
-
-**[Read Full Release Notes →](.github/RELEASE_v0.8.0.md)**
-
-**v0.7.0 - "Process Manager"** (November 2024)
-- Process Control Block (PCB) and multitasking
-- Preemptive scheduler with context switching
-- New commands: ps, testproc
-- **[Full Notes →](.github/RELEASE_v0.7.0.md)**
-
-**v0.6.0 - "Memory Manager"** (November 2024)
-- Physical Memory Manager (PMM) with bitmap allocator
-- Dynamic heap allocation (kmalloc/kfree)
-- Virtual memory with paging
-- **[Full Notes →](.github/RELEASE_v0.6.0.md)**
-
-**v0.5.0 - "Enhanced UX"** (November 2024)
-- Arrow key navigation and cursor control
-- Tab completion for commands
-- Printf-style formatting (kprintf)
-- **[Full Notes →](.github/RELEASE_v0.5.0.md)**
-
-### Learning Resources
-
-- [OSDev Wiki](https://wiki.osdev.org/) - Comprehensive OS development wiki
-- [Intel x86 Manual](https://software.intel.com/en-us/articles/intel-sdm) - Official Intel documentation
-- [NASM Documentation](https://www.nasm.us/docs.php) - NASM assembler reference
-
-## 🤝 Contributing
-
-We love contributions! Wittche OS is an open-source educational project, and we welcome developers of all skill levels.
-
-### Ways to Contribute
-
-- 🐛 **Report bugs** - Help us find and fix issues
-- 💡 **Suggest features** - Share your ideas for new features
-- 📝 **Improve documentation** - Make it easier for others to learn
-- 💻 **Submit code** - Implement new features or fix bugs
-- 🎨 **Enhance design** - Improve the user interface
-- 🧪 **Test on real hardware** - Validate compatibility
-- 💬 **Help others** - Answer questions in discussions
-
-### Quick Start for Contributors
-
-1. **Fork** the repository
-2. **Create a branch**: `git checkout -b feature/amazing-feature`
-3. **Make your changes** and test thoroughly
-4. **Commit**: `git commit -m "Add amazing feature"`
-5. **Push**: `git push origin feature/amazing-feature`
-6. **Open a Pull Request**
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
-
-### Good First Issues
-
-Look for issues labeled `good first issue` - perfect for newcomers!
-
-Some ideas:
-- Add new shell commands
-- Implement keyboard layouts (AZERTY, QWERTZ)
-- Add string utility functions
-- Improve error messages
-- Write documentation
-- Add code comments
-
-## 🗺️ Roadmap
-
-### Current Version: v0.8.0 ✅
-
-See our [ROADMAP.md](ROADMAP.md) for detailed future plans!
-
-### Completed Features
-
-**v0.5** - Better Input & UX ✅
-- ✅ Cursor movement (arrow keys)
-- ✅ Tab completion
-- ✅ Printf-style formatting
-
-**v0.6** - Memory Management ✅
-- ✅ Physical memory manager (PMM)
-- ✅ Paging (virtual memory)
-- ✅ Heap allocator (kmalloc/kfree)
-
-**v0.7** - Process Management ✅
-- ✅ Process Control Blocks (PCB)
-- ✅ Preemptive scheduler (round-robin)
-- ✅ Context switching
-- ✅ Multitasking support
-
-**v0.8** - Advanced Process Features ✅
-- ✅ Priority-based scheduling (256 levels)
-- ✅ Sleep/wake functionality (±1ms precision)
-- ✅ Process termination (kill command)
-- ✅ Dynamic priority adjustment (nice command)
-
-### Upcoming Features
-
-**v0.9** - User Mode & System Calls
-- Ring 3 user processes
-- System call interface (INT 0x80)
-- Task State Segment (TSS)
-- User/kernel memory separation
-
-**v1.0** - File System
-- ATA/IDE disk driver
-- FAT12 or simple custom file system
-- File operations (open, read, write, close)
-- Directory support
-
-## 📁 Project Structure
-
-```
-Wittche/
-├── boot/
-│   └── boot.asm         # Bootloader (BIOS → Protected Mode)
-│
-├── kernel/              # Kernel source files
-│   ├── kernel.c         # Main kernel initialization
-│   ├── screen.c         # VGA text mode driver
-│   ├── idt.c            # Interrupt Descriptor Table
-│   ├── isr.c            # Interrupt Service Routines
-│   ├── interrupt.asm    # ISR/IRQ assembly stubs
-│   ├── keyboard.c       # PS/2 keyboard driver
-│   ├── timer.c          # PIT timer driver
-│   ├── string.c         # String utility functions
-│   ├── kprintf.c        # Printf-style formatted output
-│   ├── pmm.c            # Physical Memory Manager
-│   ├── heap.c           # Kernel heap (kmalloc/kfree)
-│   ├── paging.c         # Virtual memory paging
-│   ├── process.c        # Process management
-│   ├── switch.asm       # Context switching
-│   ├── ramdisk.c        # RAM disk (virtual disk in memory)
-│   └── shell.c          # Interactive shell
-│
-├── include/             # Header files
-│   ├── kernel.h         # Kernel main header
-│   ├── screen.h         # Screen driver interface
-│   ├── idt.h            # IDT structures & functions
-│   ├── keyboard.h       # Keyboard driver interface
-│   ├── timer.h          # Timer driver interface
-│   ├── shell.h          # Shell interface
-│   ├── string.h         # String utilities
-│   ├── kprintf.h        # Printf interface
-│   ├── pmm.h            # PMM interface
-│   ├── heap.h           # Heap allocator interface
-│   ├── paging.h         # Paging interface
-│   ├── process.h        # Process management interface
-│   ├── ramdisk.h        # RAM disk interface
-│   ├── ports.h          # I/O port operations
-│   └── types.h          # Type definitions
-│
-├── docs/                # Documentation
-│   ├── BOOTLOADER_STRING_LITERAL_FIX.md  # Bootloader debugging case study
-│   └── RELEASE_v0.8.1.md                  # v0.8.1 release notes
-│
-├── .github/             # GitHub templates
-│   ├── ISSUE_TEMPLATE/  # Issue templates
-│   └── PULL_REQUEST_TEMPLATE.md
-│
-├── build/               # Build output (gitignore'd)
-├── linker.ld            # Linker script
-├── Makefile             # Build system
-├── README.md            # This file
-├── CONTRIBUTING.md      # Contribution guidelines
-├── CODE_OF_CONDUCT.md   # Community guidelines
-├── ROADMAP.md           # Future plans
-├── LICENSE              # MIT License
-└── AUTHORS              # Contributors list
-```
-
-## 🔧 Technical Details
-
-### Boot Process
-1. **BIOS** loads boot sector (512 bytes) to 0x7C00
-2. **Bootloader** (boot.asm):
-   - Loads kernel from disk in multiple reads (125 sectors ~64KB)
-   - Read 1: 62 sectors to 0x10000 (Cyl 0, Head 0, Sectors 2-63)
-   - Read 2: 63 sectors to 0x17C00 (Cyl 0, Head 1, Sectors 1-63)
-   - Sets up GDT
-   - Switches to protected mode
-   - Jumps to kernel at 0x10000
-
-3. **Kernel Entry** (kernel_entry.asm):
-   - Sets up segment registers
-   - Initializes stack
-   - Calls `kernel_main()`
-
-4. **Kernel Init** (kernel.c):
-   - Initialize VGA screen
-   - Set up IDT and PIC
-   - Initialize Physical Memory Manager (PMM)
-   - Initialize Kernel Heap
-   - Enable Paging (Virtual Memory)
-   - Initialize Process Management
-   - Initialize PIT timer (triggers scheduler)
-   - Initialize keyboard
-   - Start shell (becomes PID 1)
-
-### Memory Layout (16MB System)
-- **0x00000000 - 0x000004FF**: Real Mode IVT (1KB)
-- **0x00007C00 - 0x00007DFF**: Bootloader (512 bytes)
-- **0x00010000 - 0x001FFFFF**: Kernel Code & Data (~2MB)
-- **0x00200000 - 0x005FFFFF**: Kernel Heap (4MB)
-  - Process PCBs and stacks
-  - Dynamic allocations
-- **0x00600000 - 0x00FFFFFF**: Free Physical Memory (~10MB)
-- **0x000B8000 - 0x000B8FA0**: VGA Text Buffer (4000 bytes)
-
-### Interrupts
-- **ISR 0-31**: CPU Exceptions
-- **IRQ 32**: Timer (PIT)
-- **IRQ 33**: Keyboard (PS/2)
-- **IRQ 34-47**: Other hardware
-
-## 🎨 Screenshots
-
-```
-===========================================
- Wittche Operating System v0.7
-===========================================
-
-Welcome to Wittche OS!
-Type 'help' for available commands.
-
-wittche> ver
-
-Wittche OS Version Information
-==============================
-
-  Version:     0.7.0
-  Codename:    Process Manager
-  Build Date:  2024-11
-  Arch:        x86 (32-bit)
-
-wittche> ps
-
-Process List
-============
-
-PID  NAME                 STATE      PRIORITY  TIME(ms)
----  -------------------  ---------  --------  --------
-0    IdleProcess          READY      0         1234
-1    ShellProcess         RUNNING    10        5678
-
-Total processes: 2
-Current process: ShellProcess (PID 1)
-
-wittche> testproc
-
-Spawning Test Processes
-========================
-Created Process A (PID 2)
-Created Process B (PID 3)
-
-Test processes are now running!
-[Process A] Running iteration 0
-[Process B] Executing iteration 0
-[Process A] Running iteration 1
-[Process B] Executing iteration 1
-...
-
-wittche> ps
-
-PID  NAME                 STATE      PRIORITY  TIME(ms)
----  -------------------  ---------  --------  --------
-0    IdleProcess          READY      0         1567
-1    ShellProcess         RUNNING    10        6234
-2    TestProcA            READY      10        89
-3    TestProcB            READY      10        92
-
-Total processes: 4
-```
-
-## 📊 Statistics
-
-- **Language**: C (75%), Assembly (20%), Makefile (5%)
-- **Lines of Code**: ~6,500+
-- **Kernel Modules**: 16 modules (screen, idt, isr, keyboard, timer, string, kprintf, pmm, heap, paging, process, ramdisk, shell)
-- **Shell Commands**: 21 built-in commands
-- **Interrupts**: 48 handlers (32 ISR + 16 IRQ)
-- **Kernel Size**: ~50 KB (loaded: ~64 KB with bootloader multi-read)
-- **RAM Disk**: 1 MB (2048 blocks × 512 bytes)
-- **Max Processes**: 64 concurrent processes
-- **Priority Levels**: 256 (0-255)
-- **Sleep Precision**: ±1ms
-- **Context Switch**: <0.1ms
-- **Scheduler Overhead**: ~1%
-
-## 🧪 Testing
-
-### In QEMU
+### Quick Test
 ```bash
 make run
 ```
 
-### On Real Hardware (Advanced)
-```bash
-# Create bootable USB (BE VERY CAREFUL!)
-sudo dd if=build/wittche.img of=/dev/sdX bs=512
+Expected output:
+```
+=====================================
+   AuroraOS UEFI Bootloader v0.1
+   (Simplified Test Version)
+=====================================
+
+UEFI Firmware: EDK II
+Revision: 0x...
+
+Getting memory map...
+Memory map obtained: XX entries
+Getting Graphics Output Protocol...
+GOP found!
+  Framebuffer: 0x...
+  Resolution: 1024x768
+
+Preparing boot_info structure...
+Boot info magic: 0x41555230524F0000
+Kernel entry point: 0x10000C
+
+Exiting UEFI Boot Services...
+
+=====================================
+      AuroraOS Kernel v0.1
+  Hybrid Kernel - XNU Inspired
+=====================================
+
+[BOOT] Validating boot information...
+[OK] Boot info validated
+
+[BOOT] Boot Information:
+  Kernel Physical Base: 0x100000
+  ...
+
+[KERNEL] Initializing subsystems...
+  [ ] GDT (Global Descriptor Table)
+  ...
+
+[HALT] System halted
 ```
 
-**Warning**: Double-check the device name! `dd` can destroy data.
+## Documentation
 
-## 📜 License
+- [ARCHITECTURE.md](docs/ARCHITECTURE.md) - System architecture
+- [BOOTLOADER.md](docs/BOOTLOADER.md) - UEFI bootloader details
+- [TESTING.md](docs/TESTING.md) - Testing procedures
+- [ERRORS.md](docs/ERRORS.md) - Error documentation (5 errors documented)
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+## License
 
-## 👥 Community
+MIT License
 
-- 💬 **Discussions**: Share ideas and ask questions
-- 🐛 **Issues**: Report bugs or request features
-- 🔀 **Pull Requests**: Submit your contributions
-- ⭐ **Star**: Show your support!
+## References
 
-## 🙏 Acknowledgments
-
-- **OSDev Community** - Invaluable resources and support
-- **Contributors** - Everyone who has contributed to this project
-- **You** - For being interested in OS development!
-
-## 📬 Contact
-
-- **GitHub Issues**: For bugs and feature requests
-- **GitHub Discussions**: For questions and general discussion
-
----
-
-<div align="center">
-
-**Made with ❤️ for learning and education**
-
-Star ⭐ this repo if you find it helpful!
-
-[Report Bug](https://github.com/YOUR-USERNAME/Wittche/issues/new?template=bug_report.md) • [Request Feature](https://github.com/YOUR-USERNAME/Wittche/issues/new?template=feature_request.md) • [Ask Question](https://github.com/YOUR-USERNAME/Wittche/issues/new?template=question.md)
-
-</div>
+- Apple Darwin/XNU Kernel
+- UEFI Specification
+- OSDev Wiki
