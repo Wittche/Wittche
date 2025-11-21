@@ -10,6 +10,19 @@
 #include "console.h"
 #include "gdt.h"
 #include "idt.h"
+#include "pmm.h"
+#include "vmm.h"
+#include "kheap.h"
+#include "timer.h"
+#include "keyboard.h"
+#include "process.h"
+#include "scheduler.h"
+#include "syscall.h"
+#include "tss.h"
+#include "usermode.h"
+
+// User mode test program (defined in usermode_test.c)
+extern void usermode_test_program(void);
 
 // Forward declarations
 static void print_memory_map(boot_info_t *info);
@@ -84,37 +97,68 @@ void kernel_main(boot_info_t *boot_info) {
     // Initialize kernel subsystems
     console_print("\n[KERNEL] Initializing subsystems...\n");
 
-    // Initialize GDT
+    // Initialize GDT (must be done before IDT and TSS)
     gdt_init();
     console_print("  [OK] GDT (Global Descriptor Table)\n");
+
+    // Initialize TSS (must be done after GDT)
+    tss_init();
+    console_print("  [OK] TSS (Task State Segment)\n");
 
     // Initialize IDT
     idt_init();
     console_print("  [OK] IDT (Interrupt Descriptor Table)\n");
 
-    // TODO: Initialize physical memory manager
-    console_print("  [ ] PMM (Physical Memory Manager)\n");
+    // Initialize Physical Memory Manager
+    pmm_init(boot_info);
+    console_print("  [OK] PMM (Physical Memory Manager)\n");
 
-    // TODO: Initialize virtual memory/paging
-    console_print("  [ ] VMM (Virtual Memory Manager)\n");
+    // Initialize Virtual Memory Manager
+    vmm_init(boot_info);
+    console_print("  [OK] VMM (Virtual Memory Manager)\n");
 
-    // TODO: Initialize heap
-    console_print("  [ ] Kernel Heap\n");
+    // Initialize Kernel Heap
+    kheap_init(boot_info);
+    console_print("  [OK] Kernel Heap\n");
+
+    // Initialize Timer (PIT)
+    timer_init(TIMER_FREQ_1000HZ);  // 1000 Hz = 1ms tick
+    console_print("  [OK] Timer (PIT)\n");
+
+    // Initialize Keyboard (PS/2)
+    keyboard_init();
+    console_print("  [OK] Keyboard (PS/2)\n");
+
+    // Initialize Process Management
+    process_init();
+    console_print("  [OK] Process Management\n");
+
+    // Initialize Scheduler
+    scheduler_init();
+    console_print("  [OK] Scheduler\n");
+
+    // Initialize System Call Interface
+    syscall_init();
+    console_print("  [OK] System Call Interface\n");
+
+    console_print("\n[KERNEL] All subsystems initialized!\n\n");
 
     // TODO: Initialize Mach layer
-    console_print("  [ ] Mach Microkernel Layer\n");
+    console_print("  [ ] Mach Microkernel Layer (TODO)\n");
 
     // TODO: Initialize BSD layer
-    console_print("  [ ] BSD Layer\n");
+    console_print("  [ ] BSD Layer (TODO)\n\n");
 
-    // TODO: Initialize scheduler
-    console_print("  [ ] Scheduler\n");
+    console_print("=====================================\n");
+    console_print("  AuroraOS Kernel Ready!\n");
+    console_print("=====================================\n\n");
 
-    console_print("\n[KERNEL] Initialization incomplete - halting\n");
-    console_print("(This is expected for initial stub)\n");
+    // Start user mode test program
+    // This function will not return - jumps to Ring 3
+    start_usermode_process(usermode_test_program);
 
-    // Halt the system
-    console_print("\n[HALT] System halted\n");
+    // Should never reach here
+    console_print("\n[ERROR] Returned from user mode!\n");
     while (1) {
         __asm__ __volatile__("hlt");
     }

@@ -133,7 +133,7 @@ $(BUILD_DIR)/entry.o: $(KERNEL_DIR)/entry.S | $(BUILD_DIR)
 	@echo "[AS] Assembling kernel entry..."
 	$(AS) $(KERNEL_AS_FLAGS) $< -o $@
 
-$(BUILD_DIR)/main.o: $(KERNEL_DIR)/main.c $(KERNEL_DIR)/types.h $(KERNEL_DIR)/boot.h $(KERNEL_DIR)/console.h $(KERNEL_DIR)/gdt.h $(KERNEL_DIR)/idt.h | $(BUILD_DIR)
+$(BUILD_DIR)/main.o: $(KERNEL_DIR)/main.c $(KERNEL_DIR)/types.h $(KERNEL_DIR)/boot.h $(KERNEL_DIR)/console.h $(KERNEL_DIR)/gdt.h $(KERNEL_DIR)/idt.h $(KERNEL_DIR)/pmm.h $(KERNEL_DIR)/vmm.h $(KERNEL_DIR)/kheap.h $(KERNEL_DIR)/timer.h $(KERNEL_DIR)/keyboard.h $(KERNEL_DIR)/process.h $(KERNEL_DIR)/scheduler.h $(KERNEL_DIR)/syscall.h $(KERNEL_DIR)/tss.h $(KERNEL_DIR)/usermode.h | $(BUILD_DIR)
 	@echo "[CC] Compiling kernel main..."
 	$(KERNEL_CC) $(KERNEL_CC_FLAGS) -c $< -o $@
 
