@@ -81,13 +81,9 @@ $(BUILD_DIR)/syscall_asm.o: $(KERNEL_DIR)/syscall.asm | $(BUILD_DIR)
 $(BUILD_DIR)/usermode_asm.o: $(KERNEL_DIR)/usermode.asm | $(BUILD_DIR)
 	$(ASM) $(ASM_FLAGS) $< -o $@
 
-# Link kernel to ELF first
-$(BUILD_DIR)/kernel.elf: $(OBJS)
+# Link kernel directly to binary (linker script has OUTPUT_FORMAT(binary))
+$(KERNEL_BIN): $(OBJS)
 	$(LD) $(LD_FLAGS) $^ -o $@
-
-# Convert ELF to flat binary (only .text .rodata .data .bss)
-$(KERNEL_BIN): $(BUILD_DIR)/kernel.elf
-	objcopy -O binary -j .text -j .rodata -j .data -j .bss $< $@
 
 # Create OS image
 $(OS_IMAGE): $(BOOTLOADER) $(KERNEL_BIN)
