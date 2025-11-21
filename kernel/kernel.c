@@ -372,9 +372,11 @@ void kernel_main(void) {
 
     // Display welcome banner
     shell_display_banner();
+    vga[14] = 0x0F44; // 'D' - shell_display_banner done
 
     // Start the shell (never returns)
     shell_run();
+    vga[15] = 0x0F45; // 'E' - shell_run returned (should never happen!)
 
     // Should never reach here
     screen_write_color("\n[KERNEL PANIC] ", MAKE_COLOR(COLOR_RED, COLOR_BLACK));
