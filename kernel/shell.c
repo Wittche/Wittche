@@ -82,8 +82,15 @@ void shell_display_banner(void) {
  * Display command prompt
  */
 void shell_prompt(void) {
+    // TEST: Mark entry to shell_prompt
+    volatile unsigned short *vga = (volatile unsigned short *)0xB8000;
+    vga[21] = 0x0F31; // '1' - shell_prompt entered
+
     screen_write_color("wittche", MAKE_COLOR(COLOR_GREEN, COLOR_BLACK));
+    vga[22] = 0x0F32; // '2' - first screen_write_color done
+
     screen_write_color("> ", MAKE_COLOR(COLOR_LIGHT_GREY, COLOR_BLACK));
+    vga[23] = 0x0F33; // '3' - second screen_write_color done
 }
 
 /**
@@ -1928,9 +1935,17 @@ static void shell_get_line(char *buffer, int max_length) {
 void shell_run(void) {
     char command_buffer[MAX_CMD_LENGTH];
 
+    // TEST: Write directly to VGA to see if we reach shell_run
+    volatile unsigned short *vga = (volatile unsigned short *)0xB8000;
+    vga[16] = 0x0F55; // 'U' - shell_run started
+
     while (1) {
+        vga[17] = 0x0F57; // 'W' - while loop iteration
         shell_prompt();
+        vga[18] = 0x0F4D; // 'M' - shell_prompt done
         shell_get_line(command_buffer, MAX_CMD_LENGTH);
+        vga[19] = 0x0F4E; // 'N' - shell_get_line done
         shell_process_command(command_buffer);
+        vga[20] = 0x0F43; // 'C' - shell_process_command done
     }
 }
