@@ -216,35 +216,53 @@ $(BUILD_DIR)/usermode_test.o: $(KERNEL_DIR)/usermode_test.c $(KERNEL_DIR)/types.
 # Create kernel linker script
 $(KERNEL_DIR)/linker.ld:
 	@echo "Creating kernel linker script..."
-	@echo "OUTPUT_FORMAT(elf64-x86-64)" > $@
+	@echo "/* AuroraOS Kernel Linker Script" > $@
+	@echo " * For Multiboot2 64-bit kernel" >> $@
+	@echo " * Kernel loaded at 1MB (0x100000) physical address" >> $@
+	@echo " */" >> $@
+	@echo "OUTPUT_FORMAT(elf64-x86-64)" >> $@
 	@echo "ENTRY(_start)" >> $@
 	@echo "" >> $@
 	@echo "SECTIONS" >> $@
 	@echo "{" >> $@
+	@echo "    /* Kernel starts at 1MB physical address */" >> $@
 	@echo "    . = 0x100000;" >> $@
 	@echo "" >> $@
-	@echo "    .text : {" >> $@
+	@echo "    /* Multiboot2 header MUST be at the start */" >> $@
+	@echo "    .boot ALIGN(8) :" >> $@
+	@echo "    {" >> $@
 	@echo "        *(.multiboot)" >> $@
 	@echo "        *(.text)" >> $@
 	@echo "    }" >> $@
 	@echo "" >> $@
-	@echo "    .rodata : {" >> $@
+	@echo "    /* Read-only data - 4KB aligned */" >> $@
+	@echo "    .rodata ALIGN(4K) :" >> $@
+	@echo "    {" >> $@
 	@echo "        *(.rodata*)" >> $@
 	@echo "    }" >> $@
 	@echo "" >> $@
-	@echo "    .data : {" >> $@
+	@echo "    /* Initialized data - 4KB aligned */" >> $@
+	@echo "    .data ALIGN(4K) :" >> $@
+	@echo "    {" >> $@
 	@echo "        *(.data)" >> $@
 	@echo "    }" >> $@
 	@echo "" >> $@
-	@echo "    .bss : {" >> $@
+	@echo "    /* Uninitialized data (BSS) - 4KB aligned */" >> $@
+	@echo "    .bss ALIGN(4K) :" >> $@
+	@echo "    {" >> $@
 	@echo "        *(.bss)" >> $@
 	@echo "        *(COMMON)" >> $@
 	@echo "    }" >> $@
 	@echo "" >> $@
+	@echo "    /* Discard debug and unneeded sections */" >> $@
 	@echo "    /DISCARD/ : {" >> $@
 	@echo "        *(.eh_frame)" >> $@
+	@echo "        *(.eh_frame_hdr)" >> $@
+	@echo "        *(.note.GNU-stack)" >> $@
 	@echo "        *(.comment)" >> $@
 	@echo "    }" >> $@
+	@echo "" >> $@
+	@echo "    _kernel_end = .;" >> $@
 	@echo "}" >> $@
 
 # Create bootable ISO (future)
